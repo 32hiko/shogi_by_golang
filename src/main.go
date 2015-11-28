@@ -1,31 +1,42 @@
 package main
 
 import (
-	l "./logger"
+	. "./logger"
 	"bufio"
 	"fmt"
 	"os"
 	s "strings"
 )
 
+// const
+const PROGRAM_NAME = "shogi01"
+const PROGRAM_VERSION = "0.0.1"
+const AUTHOR = "32hiko"
+
 // alias
 var p = fmt.Println
 
-func resp(str string, logger *l.Logger) {
+func resp(str string, logger *Logger) {
 	p(str)
 	logger.Res(str)
 }
 
+func respUSI(logger *Logger) {
+	resp("id name "+PROGRAM_NAME+" "+PROGRAM_VERSION, logger)
+	resp("id author "+AUTHOR, logger)
+	resp("usiok", logger)
+}
+
 func main() {
 	// 独自のLoggerを使用
-	var logger *l.Logger = l.GetLogger()
+	logger := GetLogger()
 	defer logger.Close()
 
 	// temp logic
 	i := 0
 
 	// 将棋所とのやりとり
-	// TODO:いつでも返答すべきコマンドは常時listenするイメージで。
+	// TODO:いつでも返答すべきコマンドは常時listenするイメージで。GoRoutineとChannelを使えばよさげ
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		text := scanner.Text()
@@ -33,10 +44,7 @@ func main() {
 		switch text {
 		// エンジン登録時は、usiとquitのみ入力される。
 		case "usi":
-			// TODO: 切り出す
-			resp("id name shogi01 0.0.1", logger)
-			resp("id author 32hiko", logger)
-			resp("usiok", logger)
+			respUSI(logger)
 		case "quit":
 			// TODO 終了前処理
 			os.Exit(0)
