@@ -1,6 +1,7 @@
 package main
 
 import (
+	l "./logger"
 	"bufio"
 	"fmt"
 	"os"
@@ -10,10 +11,15 @@ import (
 // alias
 var p = fmt.Println
 
+func resp(str string, logger *l.Logger) {
+	p(str)
+	logger.Res(str)
+}
+
 func main() {
-	// TODO: logは機能化する（出力ON/OFF切り替え）
-	log, _ := os.Create("log")
-	defer log.Close()
+	// 独自のLoggerを使用
+	var logger *l.Logger = l.GetLogger()
+	defer logger.Close()
 
 	// temp logic
 	i := 0
@@ -23,15 +29,14 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		text := scanner.Text()
-		log.WriteString(text + "\n")
-		log.Sync()
+		logger.Req(text)
 		switch text {
 		// エンジン登録時は、usiとquitのみ入力される。
 		case "usi":
 			// TODO: 切り出す
-			p("id name shogi01 0.0.1")
-			p("id author 32hiko")
-			p("usiok")
+			resp("id name shogi01 0.0.1", logger)
+			resp("id author 32hiko", logger)
+			resp("usiok", logger)
 		case "quit":
 			// TODO 終了前処理
 			os.Exit(0)
@@ -40,7 +45,7 @@ func main() {
 		case "setoption name USI_Hash value 256":
 			// TODO 設定を保存する
 		case "isready":
-			p("readyok")
+			resp("readyok", logger)
 		case "usinewgame":
 			// TODO: モードを切り替えるべきか。
 		case "gameover":
@@ -48,14 +53,14 @@ func main() {
 		default:
 			if s.HasPrefix(text, "position") {
 				// TODO: 盤面を更新する
-				p("info string " + text)
+				resp("info string "+text, logger)
 			} else if s.HasPrefix(text, "go") {
 				// TODO: ここで思考し、手を返す。以下は飛車を動かすだけの暫定ロジック。
-				p("info string " + text)
+				resp("info string "+text, logger)
 				if i%2 == 0 {
-					p("bestmove 8b7b")
+					resp("bestmove 8b7b", logger)
 				} else {
-					p("bestmove 7b8b")
+					resp("bestmove 7b8b", logger)
 				}
 				i++
 			}
