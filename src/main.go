@@ -30,7 +30,7 @@ func main() {
 		case "usi":
 			// TODO: 切り出す
 			p("id name shogi01 0.0.1")
-			p("id author shiroi_gohanP")
+			p("id author 32hiko")
 			p("usiok")
 		case "quit":
 			// TODO 終了前処理
@@ -52,7 +52,7 @@ func main() {
 			} else if s.HasPrefix(text, "go") {
 				// TODO: ここで思考し、手を返す。以下は飛車を動かすだけの暫定ロジック。
 				p("info string " + text)
-				if i % 2 == 0 {
+				if i%2 == 0 {
 					p("bestmove 8b7b")
 				} else {
 					p("bestmove 7b8b")
