@@ -2,6 +2,7 @@ package main
 
 import (
 	. "./logger"
+	. "./shogi"
 	"bufio"
 	"fmt"
 	"os"
@@ -27,10 +28,22 @@ func respUSI(logger *Logger) {
 	resp("usiok", logger)
 }
 
+func develop(logger *Logger) bool {
+	state := CreateInitialState()
+	resp(state.Display(), logger)
+	resp("ok!", logger)
+	return true
+}
+
 func main() {
 	// 独自のLoggerを使用
 	logger := GetLogger()
 	defer logger.Close()
+
+	// develp mode
+	if develop(logger) {
+		os.Exit(0)
+	}
 
 	// temp logic
 	i := 0

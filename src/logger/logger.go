@@ -10,6 +10,7 @@ type Logger struct {
 
 func GetLogger() *Logger {
 	l := new(Logger)
+	// 実行時のカレントディレクトリに作成される。
 	l.log_file, _ = os.Create("log")
 	return l
 }
