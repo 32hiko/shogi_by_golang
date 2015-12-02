@@ -12,9 +12,9 @@ type TBan struct {
 	// 直感的な数字でわかるように10*10とし、0の要素は使わない。
 	Masu [10][10]*TMasu
 	// 駒IDをキーに、駒へのポインタを持つマップ
-	AllKoma   map[byte]*TKoma
-	SenteKoma map[byte]*TKoma
-	GoteKoma  map[byte]*TKoma
+	AllKoma   map[TKomaId]*TKoma
+	SenteKoma map[TKomaId]*TKoma
+	GoteKoma  map[TKomaId]*TKoma
 }
 
 func NewBan() *TBan {
@@ -31,9 +31,9 @@ func NewBan() *TBan {
 	}
 	ban := TBan{
 		Masu:      masu,
-		AllKoma:   make(map[byte]*TKoma),
-		SenteKoma: make(map[byte]*TKoma),
-		GoteKoma:  make(map[byte]*TKoma),
+		AllKoma:   make(map[TKomaId]*TKoma),
+		SenteKoma: make(map[TKomaId]*TKoma),
+		GoteKoma:  make(map[TKomaId]*TKoma),
 	}
 	return &ban
 }
@@ -49,11 +49,11 @@ func (ban TBan) PutKoma(koma *TKoma) {
 }
 
 type TMasu struct {
-	KomaId    byte
+	KomaId    TKomaId
 	Relations *Relations
 }
 
-func NewMasu(koma_id byte) *TMasu {
+func NewMasu(koma_id TKomaId) *TMasu {
 	masu := TMasu{
 		KomaId:    koma_id,
 		Relations: nil,
@@ -69,10 +69,9 @@ type Relations struct {
 }
 
 func CreateInitialState() *TBan {
-	p("CreateInitialState()")
 	ban := NewBan()
 	// 駒を1つずつ生成する
-	var koma_id byte = 1
+	var koma_id TKomaId = 1
 
 	// 後手
 	var side bool = false
@@ -165,7 +164,6 @@ func (ban TBan) Display() string {
 			if ban.Masu[x][y].KomaId == 0 {
 				str = str + "[   ]"
 			} else {
-				// str = str + "(" + s(x) + "," + s(y) + ")=" + s(ban.Masu[x][y].KomaId)
 				str = str + "[" + ban.AllKoma[ban.Masu[x][y].KomaId].Display() + "]"
 			}
 			x++

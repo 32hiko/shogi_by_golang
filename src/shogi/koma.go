@@ -2,8 +2,11 @@ package shogi
 
 import ()
 
+type TKomaId byte
+type TKind byte
+
 const (
-	Fu = iota
+	Fu TKind = iota
 	Kyo
 	Kei
 	Gin
@@ -13,18 +16,31 @@ const (
 	Gyoku
 )
 
-var disp_map = map[byte]string{Fu:"歩", Kyo:"香", Kei:"桂", Gin:"銀", Kin:"金", Kaku:"角", Hi:"飛", Gyoku:"玉"}
+var disp_map = map[TKind]string{
+	Fu:    "歩",
+	Kyo:   "香",
+	Kei:   "桂",
+	Gin:   "銀",
+	Kin:   "金",
+	Kaku:  "角",
+	Hi:    "飛",
+	Gyoku: "玉",
+}
+
+func (kind TKind) toString() string {
+	return disp_map[kind]
+}
 
 type TKoma struct {
-	Id       byte
-	Kind     byte
+	Id       TKomaId
+	Kind     TKind
 	Position [2]byte
 	Side     bool
 	Promoted bool
 	MoveTo   *[][2]byte
 }
 
-func NewKoma(id byte, kind byte, position [2]byte, side bool) *TKoma {
+func NewKoma(id TKomaId, kind TKind, position [2]byte, side bool) *TKoma {
 	koma := TKoma{
 		Id:       id,
 		Kind:     kind,
@@ -43,5 +59,5 @@ func (koma TKoma) Display() string {
 	} else {
 		side_str = "△"
 	}
-	return side_str + disp_map[koma.Kind]
+	return side_str + koma.Kind.toString()
 }
