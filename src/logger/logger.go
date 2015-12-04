@@ -8,11 +8,14 @@ type Logger struct {
 	log_file *os.File
 }
 
+var instance *Logger
+func InitLogger() {
+	instance = new(Logger)
+	instance.log_file ,_ =os.Create("log")
+}
+
 func GetLogger() *Logger {
-	l := new(Logger)
-	// 実行時のカレントディレクトリに作成される。
-	l.log_file, _ = os.Create("log")
-	return l
+	return instance
 }
 
 func (l Logger) Req(msg string) {

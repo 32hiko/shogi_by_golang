@@ -1,8 +1,8 @@
 package main
 
 import (
-	. "./logger"
-	. "./shogi"
+	. "logger"
+	. "shogi"
 	"bufio"
 	"fmt"
 	"os"
@@ -30,13 +30,16 @@ func respUSI(logger *Logger) {
 
 func develop(logger *Logger) bool {
 	state := CreateInitialState()
-	resp(state.Display(), logger)
+	state_str := state.Display()
+	p(state_str)
+	logger.Trace(state_str)
 	resp("ok!", logger)
 	return true
 }
 
 func main() {
 	// 独自のLoggerを使用
+	InitLogger()
 	logger := GetLogger()
 	defer logger.Close()
 
