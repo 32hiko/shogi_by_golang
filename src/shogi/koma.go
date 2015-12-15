@@ -58,27 +58,25 @@ type TKoma struct {
 	Id       TKomaId
 	Kind     TKind
 	Position complex64
-	Side     bool
+	IsSente  bool
 	Promoted bool
-	MoveTo   *[][2]byte
 }
 
 // 駒の生成は対局開始前にやればいいので変換とかやってもいいでしょう
-func NewKoma(id TKomaId, kind TKind, x byte, y byte, side bool) *TKoma {
+func NewKoma(id TKomaId, kind TKind, x byte, y byte, isSente bool) *TKoma {
 	koma := TKoma{
 		Id:       id,
 		Kind:     kind,
 		Position: complex(float32(x), float32(y)),
-		Side:     side,
+		IsSente:  isSente,
 		Promoted: false,
-		MoveTo:   nil,
 	}
 	return &koma
 }
 
 func (koma TKoma) Display() string {
 	var side_str string
-	if koma.Side {
+	if koma.IsSente {
 		side_str = "▲"
 	} else {
 		side_str = "△"
@@ -107,16 +105,20 @@ func (koma TKoma) getAllMove() *map[byte]*TMove {
 		// 歩、桂、銀、金、玉
 		moves := move_to_map[koma.Kind]
 		for _, pos := range moves {
-			create1Move(&koma, pos, &i, &all_move)
+			create1Moves(&koma, pos, &i, &all_move)
 		}
 	}
 	return &all_move
 }
 
+func (koma TKoma) canFarMove() bool {
+	return move_to_map[koma.Kind] == nil
+}
+
 func createNMoves(koma *TKoma, move complex64, i *byte, moves *map[byte]*TMove) {
 	temp_move := koma.Position
 	for {
-		if koma.Side {
+		if koma.IsSente {
 			temp_move += move
 		} else {
 			temp_move -= move
@@ -130,9 +132,9 @@ func createNMoves(koma *TKoma, move complex64, i *byte, moves *map[byte]*TMove) 
 	}
 }
 
-func create1Move(koma *TKoma, move complex64, i *byte, moves *map[byte]*TMove) {
+func create1Moves(koma *TKoma, move complex64, i *byte, moves *map[byte]*TMove) {
 	temp_move := koma.Position
-	if koma.Side {
+	if koma.IsSente {
 		temp_move += move
 	} else {
 		temp_move -= move

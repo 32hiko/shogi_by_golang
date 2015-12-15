@@ -1,11 +1,11 @@
 package main
 
 import (
-	. "logger"
-	. "shogi"
 	"bufio"
 	"fmt"
+	. "logger"
 	"os"
+	. "shogi"
 	s "strings"
 )
 
