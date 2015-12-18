@@ -44,9 +44,9 @@ func main() {
 	defer logger.Close()
 
 	// develp mode
-	if develop(logger) {
-		os.Exit(0)
-	}
+	//if develop(logger) {
+	//	os.Exit(0)
+	//}
 
 	// temp logic
 	i := 0

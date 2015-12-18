@@ -2,6 +2,7 @@ package logger
 
 import (
 	"os"
+	"time"
 )
 
 type Logger struct {
@@ -11,7 +12,10 @@ type Logger struct {
 var instance *Logger
 func InitLogger() {
 	instance = new(Logger)
-	instance.log_file ,_ =os.Create("log")
+	const format = "20060102150405"
+	t := time.Now()
+	file_name := t.Format(format) + ".log"
+	instance.log_file ,_ =os.Create("/home/gohan/workspace/shogi01/" + file_name)
 }
 
 func GetLogger() *Logger {
