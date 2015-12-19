@@ -2,7 +2,9 @@ package shogi
 
 import (
 	"fmt"
-	// . "logger"
+	. "logger"
+	"strconv"
+	"strings"
 )
 
 // alias
@@ -77,28 +79,6 @@ func (ban TBan) PutKoma(koma *TKoma) {
 
 	ban.AllMasu[koma.Position].KomaId = koma.Id
 
-	// ここでの目的
-	// ・新しい駒を配置する
-	// ・合法手の更新（各駒に、全部の合法手が洗い出されていること）
-	// 　　新しい駒の合法手を洗い出すこと★遮られた時の処理
-	// 　　新しい駒により、既存の駒の合法手を更新すること
-	// 　　　★新しい駒、既存の駒問わず、合法手をリフレッシュする機能が必要！
-	// ・利きマスの更新（各マスに、両陣営からの利き元をマーキングできていること）
-	// 　　新しい駒から、利いているマスにマーキングできていること
-	// 　　新しい駒が、遮った時でもマーキングできていること
-	// 　　　★新しい駒、既存の駒問わず、マーキングをリフレッシュする機能が必要！
-
-	// 以下デバッグ表示
-	/**
-	logger := GetLogger()
-	var str string
-	str += koma.Display()
-	str += " id:"
-	str += s(koma.Id)
-	str += ", position:"
-	str += s(koma.Position)
-	**/
-
 	// 駒から、その駒の機械的な利き先を取得する
 	all_moves := *(koma.getAllMove())
 
@@ -143,26 +123,6 @@ func (ban TBan) PutKoma(koma *TKoma) {
 	valid_moves := deleteInvalidMoves(&all_moves)
 	ban.AllMasu[koma.Position].Moves = valid_moves
 
-	// 以下デバッグ表示
-	/**
-	str += ", move:"
-	if len(*valid_moves) > 0 {
-		var index byte = 0
-		for index < byte(len(*valid_moves)) {
-			item := (*valid_moves)[index]
-			if item == nil {
-				index++
-				continue
-			}
-			temp_pos := item.getToAsComplex()
-			str += s(temp_pos)
-			str += ", "
-			index++
-		}
-	}
-	**/
-
-	// logger.Trace(str)
 	// 自マスに、他の駒からの利きとしてIdが入っている場合で、香、角、飛の場合は先の利きを止める
 	s_map := ban.AllMasu[koma.Position].SenteKiki
 	if len(s_map) > 0 {
@@ -597,6 +557,36 @@ func putAllKoma(ban *TBan) {
 		koma_id++
 		x++
 	}
+}
+
+// 7g -> 7+7i
+func str2Position(str string) complex64 {
+	int_x, _ := strconv.Atoi(str[0:1])
+	float_x := float32(int_x)
+	char_y := str[1:2]
+	float_y := float32(strings.Index("0abcdefghi", char_y))
+	return complex(float_x, float_y)
+}
+
+// USI形式のmoveを反映させる。
+func (ban TBan) ApplyMove(usi_move string) {
+	// usi_moveをこちらのmoveに変換する
+	var from_str string
+	var to_str string
+	var promote bool
+	if len(usi_move) == 5 {
+		// 成り
+		promote = true
+	}
+	if promote {
+	}
+	from_str = usi_move[0:2]
+	to_str = usi_move[2:4]
+	from := str2Position(from_str)
+	to := str2Position(to_str)
+	logger := GetLogger()
+	logger.Trace("from: " + s(from) + ", to: " + s(to))
+	// こちらのmoveを実行する
 }
 
 func (ban TBan) Display() string {

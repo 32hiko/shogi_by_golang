@@ -1,4 +1,4 @@
 bin/
 pkg/
 .project
-log
+*log

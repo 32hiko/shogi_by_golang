@@ -28,28 +28,16 @@ func respUSI(logger *Logger) {
 	resp("usiok", logger)
 }
 
-func develop(logger *Logger) bool {
-	state := CreateInitialState()
-	state_str := state.Display()
-	p(state_str)
-	logger.Trace(state_str)
-	resp("ok!", logger)
-	return true
-}
-
 func main() {
 	// 独自のLoggerを使用
 	InitLogger()
 	logger := GetLogger()
 	defer logger.Close()
 
-	// develp mode
-	//if develop(logger) {
-	//	os.Exit(0)
-	//}
-
-	// temp logic
-	i := 0
+	// master ban
+	var master *TBan
+	var tesuu int = 0
+	player := NewPlayer()
 
 	// 将棋所とのやりとり
 	// TODO:いつでも返答すべきコマンドは常時listenするイメージで。GoRoutineとChannelを使えばよさげ
@@ -69,6 +57,7 @@ func main() {
 		case "setoption name USI_Hash value 256":
 			// TODO 設定を保存する
 		case "isready":
+			master = CreateInitialState()
 			resp("readyok", logger)
 		case "usinewgame":
 			// TODO: モードを切り替えるべきか。
@@ -77,16 +66,24 @@ func main() {
 		default:
 			if s.HasPrefix(text, "position") {
 				// TODO: 盤面を更新する
+				split_text := s.Split(text, " ")
+				// position startpos moves 7g7f 8b7b 2g2f
+				// とりあえずは初期配置は通常で。
+				for index, value := range split_text {
+					if index < 3 {
+						continue
+					}
+					// 何度も一手ずつ反映する必要はないので、スキップできるようにする。
+					if index-3 < tesuu {
+						continue
+					}
+					master.ApplyMove(value)
+					tesuu++
+				}
 				resp("info string "+text, logger)
 			} else if s.HasPrefix(text, "go") {
-				// TODO: ここで思考し、手を返す。以下は飛車を動かすだけの暫定ロジック。
-				resp("info string "+text, logger)
-				if i%2 == 0 {
-					resp("bestmove 8b7b", logger)
-				} else {
-					resp("bestmove 7b8b", logger)
-				}
-				i++
+				bestmove_str := player.Search(master)
+				resp(bestmove_str, logger)
 			}
 		}
 	}
