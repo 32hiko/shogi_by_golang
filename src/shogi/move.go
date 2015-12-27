@@ -25,17 +25,6 @@ func NewMove(from_id TKomaId, position complex64, to_id TKomaId) *TMove {
 	return &move
 }
 
-func NewMove2(from_id TKomaId, to_x byte, to_y byte, to_id TKomaId) *TMove {
-	move := TMove{
-		FromId: from_id,
-		ToX:    to_x,
-		ToY:    to_y,
-		ToId:   to_id,
-		IsValid: true,
-	}
-	return &move
-}
-
 func (move TMove) getToAsComplex() complex64 {
 	return complex(float32(move.ToX), float32(move.ToY))
 }

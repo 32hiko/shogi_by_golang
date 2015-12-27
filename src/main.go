@@ -78,6 +78,7 @@ func main() {
 						continue
 					}
 					master.ApplyMove(value)
+					logger.Trace(master.Display())
 					tesuu++
 				}
 				resp("info string "+text, logger)

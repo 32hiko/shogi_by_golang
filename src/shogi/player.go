@@ -6,6 +6,7 @@ type TPlayer struct {
 	i *int
 }
 
+// 当然、Playerは何種類か用意する予定。interfaceとかちゃんと使って。
 func NewPlayer() *TPlayer {
 	var count int = 0
 	player := TPlayer{}
