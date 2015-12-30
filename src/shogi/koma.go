@@ -16,7 +16,6 @@ const (
 	Gyoku
 )
 
-// いったん成りのことは忘れる
 var disp_map = map[TKind]string{
 	Fu:    "歩",
 	Kyo:   "香",
@@ -26,6 +25,15 @@ var disp_map = map[TKind]string{
 	Kaku:  "角",
 	Hi:    "飛",
 	Gyoku: "玉",
+}
+
+var promoted_disp_map = map[TKind]string{
+	Fu:   "と",
+	Kyo:  "杏",
+	Kei:  "圭",
+	Gin:  "全",
+	Kaku: "馬",
+	Hi:   "龍",
 }
 
 // 将棋だけど東西南北で。直接画面には出ないし。
@@ -50,8 +58,12 @@ var move_to_map = map[TKind][]complex64{
 	Gyoku: []complex64{move_n, move_ne, move_nw, move_e, move_w, move_s, move_se, move_sw},
 }
 
-func (kind TKind) toString() string {
-	return disp_map[kind]
+func (kind TKind) toString(promoted bool) string {
+	if promoted {
+		return promoted_disp_map[kind]
+	} else {
+		return disp_map[kind]
+	}
 }
 
 type TKoma struct {
@@ -80,42 +92,82 @@ func (koma TKoma) Display() string {
 		side_str = "▲"
 	} else {
 		side_str = "△"
+		if koma.Kind == Gyoku {
+			return "△王"
+		}
 	}
-	return side_str + koma.Kind.toString()
+	return side_str + koma.Kind.toString(koma.Promoted)
 }
 
 // 他の駒関係なく、盤上で移動できる先を洗い出す
-func (koma TKoma) getAllMove() *map[byte]*TMove {
+func (koma TKoma) GetAllMove() *map[byte]*TMove {
 	all_move := make(map[byte]*TMove)
 	var i byte = 0
-	switch koma.Kind {
-	case Kyo:
-		createNMoves(&koma, move_n, &i, &all_move)
-	case Kaku:
-		createNMoves(&koma, move_ne, &i, &all_move)
-		createNMoves(&koma, move_se, &i, &all_move)
-		createNMoves(&koma, move_nw, &i, &all_move)
-		createNMoves(&koma, move_sw, &i, &all_move)
-	case Hi:
-		createNMoves(&koma, move_n, &i, &all_move)
-		createNMoves(&koma, move_s, &i, &all_move)
-		createNMoves(&koma, move_e, &i, &all_move)
-		createNMoves(&koma, move_w, &i, &all_move)
-	default:
-		// 歩、桂、銀、金、玉
-		moves := move_to_map[koma.Kind]
-		for _, pos := range moves {
-			create1Moves(&koma, pos, &i, &all_move)
+	if koma.Promoted {
+		switch koma.Kind {
+		case Kaku:
+			koma.CreateNMoves(move_ne, &i, &all_move)
+			koma.CreateNMoves(move_se, &i, &all_move)
+			koma.CreateNMoves(move_nw, &i, &all_move)
+			koma.CreateNMoves(move_sw, &i, &all_move)
+			koma.Create1Move(move_n, &i, &all_move)
+			koma.Create1Move(move_s, &i, &all_move)
+			koma.Create1Move(move_e, &i, &all_move)
+			koma.Create1Move(move_w, &i, &all_move)
+		case Hi:
+			koma.CreateNMoves(move_n, &i, &all_move)
+			koma.CreateNMoves(move_s, &i, &all_move)
+			koma.CreateNMoves(move_e, &i, &all_move)
+			koma.CreateNMoves(move_w, &i, &all_move)
+			koma.Create1Move(move_ne, &i, &all_move)
+			koma.Create1Move(move_se, &i, &all_move)
+			koma.Create1Move(move_nw, &i, &all_move)
+			koma.Create1Move(move_sw, &i, &all_move)
+		default:
+			// と、杏、圭、全
+			moves := move_to_map[Kin]
+			for _, pos := range moves {
+				koma.Create1Move(pos, &i, &all_move)
+			}
+		}
+	} else {
+		switch koma.Kind {
+		case Kyo:
+			koma.CreateNMoves(move_n, &i, &all_move)
+		case Kaku:
+			koma.CreateNMoves(move_ne, &i, &all_move)
+			koma.CreateNMoves(move_se, &i, &all_move)
+			koma.CreateNMoves(move_nw, &i, &all_move)
+			koma.CreateNMoves(move_sw, &i, &all_move)
+		case Hi:
+			koma.CreateNMoves(move_n, &i, &all_move)
+			koma.CreateNMoves(move_s, &i, &all_move)
+			koma.CreateNMoves(move_e, &i, &all_move)
+			koma.CreateNMoves(move_w, &i, &all_move)
+		default:
+			// 歩、桂、銀、金、玉
+			moves := move_to_map[koma.Kind]
+			for _, pos := range moves {
+				koma.Create1Move(pos, &i, &all_move)
+			}
 		}
 	}
 	return &all_move
 }
 
-func (koma TKoma) canFarMove() bool {
-	return move_to_map[koma.Kind] == nil
+func (koma TKoma) CanFarMove() bool {
+	if koma.Promoted {
+		if koma.Kind == Kaku || koma.Kind == Hi {
+			return true
+		} else {
+			return false
+		}
+	} else {
+		return move_to_map[koma.Kind] == nil
+	}
 }
 
-func createNMoves(koma *TKoma, move complex64, i *byte, moves *map[byte]*TMove) {
+func (koma TKoma) CreateNMoves(move complex64, i *byte, moves *map[byte]*TMove) {
 	temp_move := koma.Position
 	for {
 		if koma.IsSente {
@@ -132,7 +184,7 @@ func createNMoves(koma *TKoma, move complex64, i *byte, moves *map[byte]*TMove) 
 	}
 }
 
-func create1Moves(koma *TKoma, move complex64, i *byte, moves *map[byte]*TMove) {
+func (koma TKoma) Create1Move(move complex64, i *byte, moves *map[byte]*TMove) {
 	temp_move := koma.Position
 	if koma.IsSente {
 		temp_move += move

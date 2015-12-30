@@ -77,6 +77,7 @@ func main() {
 					if index-3 < tesuu {
 						continue
 					}
+					logger.Trace("to apply: " + value)
 					master.ApplyMove(value)
 					logger.Trace(master.Display())
 					tesuu++
