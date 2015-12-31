@@ -4,6 +4,7 @@ import ()
 
 type TKomaId byte
 type TKind byte
+type TTeban bool
 
 const (
 	Fu TKind = iota
@@ -14,6 +15,11 @@ const (
 	Kaku
 	Hi
 	Gyoku
+)
+
+const (
+	Sente TTeban = true
+	Gote  TTeban = false
 )
 
 var disp_map = map[TKind]string{
@@ -70,12 +76,12 @@ type TKoma struct {
 	Id       TKomaId
 	Kind     TKind
 	Position complex64
-	IsSente  bool
+	IsSente  TTeban
 	Promoted bool
 }
 
 // 駒の生成は対局開始前にやればいいので変換とかやってもいいでしょう
-func NewKoma(id TKomaId, kind TKind, x byte, y byte, isSente bool) *TKoma {
+func NewKoma(id TKomaId, kind TKind, x byte, y byte, isSente TTeban) *TKoma {
 	koma := TKoma{
 		Id:       id,
 		Kind:     kind,
@@ -100,7 +106,7 @@ func (koma TKoma) Display() string {
 }
 
 // 他の駒関係なく、盤上で移動できる先を洗い出す
-func (koma TKoma) GetAllMove() *map[byte]*TMove {
+func (koma TKoma) GetAllMoves() *map[byte]*TMove {
 	all_move := make(map[byte]*TMove)
 	var i byte = 0
 	if koma.Promoted {

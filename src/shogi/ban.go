@@ -51,19 +51,39 @@ type TMasu struct {
 	// 駒があれば駒の合法手。駒同士の関係は、必ず盤（マス）を介する作りとする。
 	Moves *map[byte]*TMove
 	// このマスに利かせている駒のIdを入れる。ヒートマップを作るため
-	SenteKiki map[TKomaId]string // temp
-	GoteKiki  map[TKomaId]string // temp
+	SenteKiki *map[TKomaId]string // temp
+	GoteKiki  *map[TKomaId]string // temp
 }
 
 func NewMasu(koma_id TKomaId) *TMasu {
 	moves := make(map[byte]*TMove)
+	s_kiki := make(map[TKomaId]string)
+	g_kiki := make(map[TKomaId]string)
 	masu := TMasu{
 		KomaId:    koma_id,
 		Moves:     &moves,
-		SenteKiki: make(map[TKomaId]string),
-		GoteKiki:  make(map[TKomaId]string),
+		SenteKiki: &s_kiki,
+		GoteKiki:  &g_kiki,
 	}
 	return &masu
+}
+
+func (masu TMasu) SaveKiki(koma_id TKomaId, is_sente TTeban) {
+	kiki := masu.GetKiki(is_sente)
+	(*kiki)[koma_id] = ""
+}
+
+func (masu TMasu) DeleteKiki(koma_id TKomaId, is_sente TTeban) {
+	kiki := masu.GetKiki(is_sente)
+	delete(*kiki, koma_id)
+}
+
+func (masu TMasu) GetKiki(is_sente TTeban) *map[TKomaId]string {
+	if is_sente {
+		return masu.SenteKiki
+	} else {
+		return masu.GoteKiki
+	}
 }
 
 func getComplex64(x byte, y byte) complex64 {
@@ -91,7 +111,7 @@ func (ban TBan) PutKoma(koma *TKoma) {
 		ban.AllMasu[koma.Position].Moves = far_moves
 	} else {
 		// 駒から、その駒の機械的な利き先を取得する
-		all_moves := koma.GetAllMove()
+		all_moves := koma.GetAllMoves()
 		// 機械的な利き先のうち自陣営の駒がいるマスを除き、有効な指し手となるマスを保存する
 		ban.CheckMovesAndKiki(koma, all_moves)
 		valid_moves := deleteInvalidMoves(all_moves)
@@ -99,55 +119,18 @@ func (ban TBan) PutKoma(koma *TKoma) {
 	}
 
 	// 自マスに、他の駒からの利きとしてIdが入っている場合で、香、角、飛の場合は先の利きを止める
-	s_map := ban.AllMasu[koma.Position].SenteKiki
-	if len(s_map) > 0 {
-		for koma_id, _ := range s_map {
+	ban.DeleteCloseMovesAndKiki(koma, Sente)
+	ban.DeleteCloseMovesAndKiki(koma, Gote)
+}
+
+func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
+	kiki_map := ban.AllMasu[koma.Position].GetKiki(is_sente)
+	if len(*kiki_map) > 0 {
+		for koma_id, _ := range *kiki_map {
 			target_koma := ban.AllKoma[koma_id]
 			target_moves := ban.AllMasu[target_koma.Position].Moves
-			if koma.IsSente {
-				// komaが先手なら、komaの位置への手は合法でなくなるので削除が必要。
-				for _, move := range *target_moves {
-					if move.getToAsComplex() == koma.Position {
-						move.IsValid = false
-						if target_koma.CanFarMove() {
-							markInvalidMoves(target_koma.Position, koma.Position, target_moves)
-						}
-						break
-					}
-				}
-			} else {
-				// komaが後手なら、komaの位置への手でkomaが取れることを手に保存する。
-				var saved bool = false
-				for _, move := range *target_moves {
-					if move.getToAsComplex() == koma.Position {
-						move.ToId = koma.Id
-						saved = true
-						if target_koma.CanFarMove() {
-							markInvalidMoves(target_koma.Position, koma.Position, target_moves)
-						}
-						break
-					}
-				}
-				if !saved {
-					// もともと自陣営の駒に利かせていたところ、その駒を取られた場合はmoveが存在していない。
-					AddMove(target_moves, NewMove(target_koma.Id, koma.Position, koma.Id))
-				}
-			}
-			if target_koma.CanFarMove() {
-				// komaが先手後手問わず、香、角、飛からkomaへの延長線上への利きは削除が必要。
-				ban.DeleteFarKiki(target_koma.Position, koma.Position, true)
-			}
-			valid_moves := deleteInvalidMoves(target_moves)
-			ban.AllMasu[target_koma.Position].Moves = valid_moves
-		}
-	}
-	g_map := ban.AllMasu[koma.Position].GoteKiki
-	if len(g_map) > 0 {
-		for koma_id, _ := range g_map {
-			target_koma := ban.AllKoma[koma_id]
-			target_moves := ban.AllMasu[target_koma.Position].Moves
-			if koma.IsSente {
-				// komaが先手なら、komaの位置への手でkomaが取れることを手に保存する。
+			if koma.IsSente != is_sente {
+				// komaが敵陣営なら、komaの位置への手でkomaが取れることを手に保存する。
 				var saved bool = false
 				for _, move := range *target_moves {
 					if move.getToAsComplex() == koma.Position {
@@ -164,7 +147,7 @@ func (ban TBan) PutKoma(koma *TKoma) {
 					AddMove(target_moves, NewMove(target_koma.Id, koma.Position, koma.Id))
 				}
 			} else {
-				// komaが後手なら、komaの位置への手は合法でなくなるので削除が必要。
+				// komaが自陣営なら、komaの位置への手は合法でなくなるので削除が必要。
 				for _, move := range *target_moves {
 					if move.getToAsComplex() == koma.Position {
 						move.IsValid = false
@@ -177,33 +160,16 @@ func (ban TBan) PutKoma(koma *TKoma) {
 			}
 			if target_koma.CanFarMove() {
 				// komaが先手後手問わず、香、角、飛からkomaへの延長線上への利きは削除が必要。
-				ban.DeleteFarKiki(target_koma.Position, koma.Position, false)
+				ban.DeleteFarKiki(target_koma.Position, koma.Position, is_sente)
 			}
 			valid_moves := deleteInvalidMoves(target_moves)
 			ban.AllMasu[target_koma.Position].Moves = valid_moves
 		}
-	}
-
-}
-
-func (masu *TMasu) saveKiki(koma_id TKomaId, is_sente bool) {
-	if is_sente {
-		masu.SenteKiki[koma_id] = ""
-	} else {
-		masu.GoteKiki[koma_id] = ""
-	}
-}
-
-func (masu *TMasu) deleteKiki(koma_id TKomaId, is_sente bool) {
-	if is_sente {
-		delete(masu.SenteKiki, koma_id)
-	} else {
-		delete(masu.GoteKiki, koma_id)
 	}
 }
 
 // 香、角、飛の、1方向の利きを遮られた時の利きを削除する
-func (ban TBan) DeleteFarKiki(from complex64, to complex64, is_sente bool) {
+func (ban TBan) DeleteFarKiki(from complex64, to complex64, is_sente TTeban) {
 	// 削除する方向を求める
 	diff := to - from
 	x := real(diff)
@@ -253,12 +219,12 @@ func (ban TBan) DeleteFarKiki(from complex64, to complex64, is_sente bool) {
 }
 
 // ↑の正味の処理
-func (ban TBan) DeleteAllFarKiki(masu *TMasu, temp_to complex64, delta complex64, is_sente bool) {
+func (ban TBan) DeleteAllFarKiki(masu *TMasu, temp_to complex64, delta complex64, is_sente TTeban) {
 	for {
 		temp_to += delta
 		if isValidMove(temp_to) {
 			temp_masu := ban.AllMasu[temp_to]
-			temp_masu.deleteKiki(masu.KomaId, is_sente)
+			temp_masu.DeleteKiki(masu.KomaId, is_sente)
 		} else {
 			break
 		}
@@ -320,7 +286,7 @@ func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta complex64, map_key *byte, 
 	if isValidMove(temp_move) {
 		// 利き先マスに、自駒のIdを保存する
 		kiki_masu := ban.AllMasu[temp_move]
-		kiki_masu.saveKiki(koma.Id, koma.IsSente)
+		kiki_masu.SaveKiki(koma.Id, koma.IsSente)
 		target_id := kiki_masu.KomaId
 		// 利き先マスに、駒があるかないか
 		if target_id != 0 {
@@ -357,7 +323,7 @@ func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta complex64, map_key *byte,
 		if isValidMove(temp_move) {
 			// 利き先マスに、自駒のIdを保存する
 			kiki_masu := ban.AllMasu[temp_move]
-			kiki_masu.saveKiki(koma.Id, koma.IsSente)
+			kiki_masu.SaveKiki(koma.Id, koma.IsSente)
 			target_id := kiki_masu.KomaId
 			// 利き先マスに、駒があるかないか
 			if target_id != 0 {
@@ -389,7 +355,7 @@ func (ban TBan) CheckMovesAndKiki(koma *TKoma, moves *map[byte]*TMove) {
 		temp_pos := move.getToAsComplex()
 		// 利き先マスに、自駒のIdを保存する
 		kiki_masu := ban.AllMasu[temp_pos]
-		kiki_masu.saveKiki(koma.Id, koma.IsSente)
+		kiki_masu.SaveKiki(koma.Id, koma.IsSente)
 		target_id := kiki_masu.KomaId
 		if target_id != 0 {
 			if ban.AllKoma[target_id].IsSente == koma.IsSente {
@@ -531,79 +497,79 @@ func (ban TBan) PutAllKoma() {
 	var koma_id TKomaId = 1
 
 	// 後手
-	var side bool = false
+	var teban TTeban = Gote
 	// 香
-	ban.PutKoma(NewKoma(koma_id, Kyo, 1, 1, side))
+	ban.PutKoma(NewKoma(koma_id, Kyo, 1, 1, teban))
 	koma_id++
-	ban.PutKoma(NewKoma(koma_id, Kyo, 9, 1, side))
+	ban.PutKoma(NewKoma(koma_id, Kyo, 9, 1, teban))
 	koma_id++
 	// 桂
-	ban.PutKoma(NewKoma(koma_id, Kei, 2, 1, side))
+	ban.PutKoma(NewKoma(koma_id, Kei, 2, 1, teban))
 	koma_id++
-	ban.PutKoma(NewKoma(koma_id, Kei, 8, 1, side))
+	ban.PutKoma(NewKoma(koma_id, Kei, 8, 1, teban))
 	koma_id++
 	// 銀
-	ban.PutKoma(NewKoma(koma_id, Gin, 3, 1, side))
+	ban.PutKoma(NewKoma(koma_id, Gin, 3, 1, teban))
 	koma_id++
-	ban.PutKoma(NewKoma(koma_id, Gin, 7, 1, side))
+	ban.PutKoma(NewKoma(koma_id, Gin, 7, 1, teban))
 	koma_id++
 	// 金
-	ban.PutKoma(NewKoma(koma_id, Kin, 4, 1, side))
+	ban.PutKoma(NewKoma(koma_id, Kin, 4, 1, teban))
 	koma_id++
-	ban.PutKoma(NewKoma(koma_id, Kin, 6, 1, side))
+	ban.PutKoma(NewKoma(koma_id, Kin, 6, 1, teban))
 	koma_id++
 	// 王
-	ban.PutKoma(NewKoma(koma_id, Gyoku, 5, 1, side))
+	ban.PutKoma(NewKoma(koma_id, Gyoku, 5, 1, teban))
 	koma_id++
 	// 角
-	ban.PutKoma(NewKoma(koma_id, Kaku, 2, 2, side))
+	ban.PutKoma(NewKoma(koma_id, Kaku, 2, 2, teban))
 	koma_id++
 	// 飛
-	ban.PutKoma(NewKoma(koma_id, Hi, 8, 2, side))
+	ban.PutKoma(NewKoma(koma_id, Hi, 8, 2, teban))
 	koma_id++
 	// 歩
 	var x byte = 1
 	for x <= 9 {
-		ban.PutKoma(NewKoma(koma_id, Fu, x, 3, side))
+		ban.PutKoma(NewKoma(koma_id, Fu, x, 3, teban))
 		koma_id++
 		x++
 	}
 
 	// 先手
-	side = true
+	teban = Sente
 	// 香
-	ban.PutKoma(NewKoma(koma_id, Kyo, 1, 9, side))
+	ban.PutKoma(NewKoma(koma_id, Kyo, 1, 9, teban))
 	koma_id++
-	ban.PutKoma(NewKoma(koma_id, Kyo, 9, 9, side))
+	ban.PutKoma(NewKoma(koma_id, Kyo, 9, 9, teban))
 	koma_id++
 	// 桂
-	ban.PutKoma(NewKoma(koma_id, Kei, 2, 9, side))
+	ban.PutKoma(NewKoma(koma_id, Kei, 2, 9, teban))
 	koma_id++
-	ban.PutKoma(NewKoma(koma_id, Kei, 8, 9, side))
+	ban.PutKoma(NewKoma(koma_id, Kei, 8, 9, teban))
 	koma_id++
 	// 銀
-	ban.PutKoma(NewKoma(koma_id, Gin, 3, 9, side))
+	ban.PutKoma(NewKoma(koma_id, Gin, 3, 9, teban))
 	koma_id++
-	ban.PutKoma(NewKoma(koma_id, Gin, 7, 9, side))
+	ban.PutKoma(NewKoma(koma_id, Gin, 7, 9, teban))
 	koma_id++
 	// 金
-	ban.PutKoma(NewKoma(koma_id, Kin, 4, 9, side))
+	ban.PutKoma(NewKoma(koma_id, Kin, 4, 9, teban))
 	koma_id++
-	ban.PutKoma(NewKoma(koma_id, Kin, 6, 9, side))
+	ban.PutKoma(NewKoma(koma_id, Kin, 6, 9, teban))
 	koma_id++
 	// 王
-	ban.PutKoma(NewKoma(koma_id, Gyoku, 5, 9, side))
+	ban.PutKoma(NewKoma(koma_id, Gyoku, 5, 9, teban))
 	koma_id++
 	// 角
-	ban.PutKoma(NewKoma(koma_id, Kaku, 8, 8, side))
+	ban.PutKoma(NewKoma(koma_id, Kaku, 8, 8, teban))
 	koma_id++
 	// 飛
-	ban.PutKoma(NewKoma(koma_id, Hi, 2, 8, side))
+	ban.PutKoma(NewKoma(koma_id, Hi, 2, 8, teban))
 	koma_id++
 	// 歩
 	x = 1
 	for x <= 9 {
-		ban.PutKoma(NewKoma(koma_id, Fu, x, 7, side))
+		ban.PutKoma(NewKoma(koma_id, Fu, x, 7, teban))
 		koma_id++
 		x++
 	}
@@ -697,19 +663,15 @@ func (ban TBan) CaptureKoma(koma_id TKomaId) {
 	// 駒の利きを削除
 	// 駒からgetAllMoveで全利き候補を取ってそこから削除するのが論理的か。
 	// 少なくとも、前段の合法手には味方への利きが含まれていない。
-	moves_4_delete_kiki := target_koma.GetAllMove()
-	for _, move := range *moves_4_delete_kiki {
-		kiki_masu := ban.AllMasu[move.getToAsComplex()]
-		kiki_masu.deleteKiki(koma_id, target_koma.IsSente)
-	}
+	ban.DeleteAllKiki(target_koma)
 
 	// 駒の持ち主を入れ替える
 	if target_koma.IsSente {
-		target_koma.IsSente = false
+		target_koma.IsSente = Gote
 		delete(ban.SenteKoma, koma_id)
 		ban.GoteKoma[koma_id] = target_koma
 	} else {
-		target_koma.IsSente = true
+		target_koma.IsSente = Sente
 		delete(ban.GoteKoma, koma_id)
 		ban.SenteKoma[koma_id] = target_koma
 	}
@@ -732,18 +694,13 @@ func (ban TBan) RemoveKoma(koma_id TKomaId) {
 	target_masu.Moves = nil
 
 	// 駒の利きを削除
-	// 駒からgetAllMoveで全利き候補を取ってそこから削除するのが論理的か。
-	// 少なくとも、前段の合法手には味方への利きが含まれていない。
-	moves_4_delete_kiki := target_koma.GetAllMove()
-	for _, move := range *moves_4_delete_kiki {
-		kiki_masu := ban.AllMasu[move.getToAsComplex()]
-		kiki_masu.deleteKiki(koma_id, target_koma.IsSente)
-	}
+	ban.DeleteAllKiki(target_koma)
+
 	// 駒のあった場所からIdを削除
 	target_masu.KomaId = 0
 
 	// 駒がどいたことにより、そのマスに利かせていた駒の利きを再評価
-	for sente_kiki_id, _ := range target_masu.SenteKiki {
+	for sente_kiki_id, _ := range *(target_masu.SenteKiki) {
 		kiki_koma := ban.AllKoma[sente_kiki_id]
 		moves := ban.AllMasu[kiki_koma.Position].Moves
 		if kiki_koma.CanFarMove() {
@@ -756,7 +713,7 @@ func (ban TBan) RemoveKoma(koma_id TKomaId) {
 			AddMove(moves, NewMove(sente_kiki_id, target_koma.Position, 0))
 		}
 	}
-	for gote_kiki_id, _ := range target_masu.GoteKiki {
+	for gote_kiki_id, _ := range *(target_masu.GoteKiki) {
 		kiki_koma := ban.AllKoma[gote_kiki_id]
 		moves := ban.AllMasu[kiki_koma.Position].Moves
 		// 香、角、飛の場合はその先も追加する必要があるかも？
@@ -769,6 +726,17 @@ func (ban TBan) RemoveKoma(koma_id TKomaId) {
 		} else {
 			AddMove(moves, NewMove(gote_kiki_id, target_koma.Position, 0))
 		}
+	}
+}
+
+func (ban TBan) DeleteAllKiki(koma *TKoma) {
+	// 駒の利きを削除
+	// 駒からgetAllMoveで全利き候補を取ってそこから削除するのが論理的か。
+	// 少なくとも、前段の合法手には味方への利きが含まれていない。
+	moves_4_delete_kiki := koma.GetAllMoves()
+	for _, move := range *moves_4_delete_kiki {
+		kiki_masu := ban.AllMasu[move.getToAsComplex()]
+		kiki_masu.DeleteKiki(koma.Id, koma.IsSente)
 	}
 }
 
@@ -845,7 +813,7 @@ func (ban TBan) AddAllFarMovesAndKiki(moves *map[byte]*TMove, koma_id TKomaId, t
 			kiki_masu := ban.AllMasu[temp_to]
 			// 利きは駒の有無を問わず保存
 			logger.Trace("koma_id: " + s(koma_id) + " temp_to: " + s(temp_to))
-			kiki_masu.saveKiki(koma_id, koma.IsSente)
+			kiki_masu.SaveKiki(koma_id, koma.IsSente)
 			target_id := kiki_masu.KomaId
 			if target_id != 0 {
 				// 駒がある
@@ -928,11 +896,11 @@ func (ban TBan) Display() string {
 			str += s(pos)
 			str += " kiki: "
 			masu := ban.AllMasu[pos]
-			for k, _ := range masu.SenteKiki {
+			for k, _ := range *(masu.SenteKiki) {
 				str += ban.AllKoma[k].Display()
 				str += ", "
 			}
-			for k, _ := range masu.GoteKiki {
+			for k, _ := range *(masu.GoteKiki) {
 				str += ban.AllKoma[k].Display()
 				str += ", "
 			}
