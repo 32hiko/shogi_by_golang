@@ -27,13 +27,14 @@ func NewBan() *TBan {
 	for y <= 9 {
 		x = 1
 		for x <= 9 {
-			all_masu[getComplex64(x, y)] = NewMasu(0)
+			pos := getComplex64(x, y)
+			all_masu[pos] = NewMasu(pos, 0)
 			x++
 		}
 		y++
 	}
 	// 持ち駒用
-	all_masu[complex(0, 0)] = NewMasu(0)
+	all_masu[complex(0, 0)] = NewMasu(complex(0, 0), 0)
 
 	ban := TBan{
 		AllMasu:   all_masu,
@@ -46,6 +47,8 @@ func NewBan() *TBan {
 
 // 駒が持つデータ、マスが持つデータは今後も検討要
 type TMasu struct {
+	// マスの座標
+	Position complex64
 	// 駒があれば駒のId
 	KomaId TKomaId
 	// 駒があれば駒の合法手。駒同士の関係は、必ず盤（マス）を介する作りとする。
@@ -55,11 +58,12 @@ type TMasu struct {
 	GoteKiki  *map[TKomaId]string // temp
 }
 
-func NewMasu(koma_id TKomaId) *TMasu {
+func NewMasu(position complex64, koma_id TKomaId) *TMasu {
 	moves := make(map[byte]*TMove)
 	s_kiki := make(map[TKomaId]string)
 	g_kiki := make(map[TKomaId]string)
 	masu := TMasu{
+		Position:  position,
 		KomaId:    koma_id,
 		Moves:     &moves,
 		SenteKiki: &s_kiki,
@@ -106,7 +110,7 @@ func (ban TBan) PutKoma(koma *TKoma) {
 
 	// 駒の合法手
 	if koma.CanFarMove() {
-		// 香、角、飛、馬、龍の遠利き部分
+		// 香、角、飛、馬、龍の遠利き部分。駒の有無も考慮しつつ作成する。
 		far_moves := ban.CreateFarMovesAndKiki(koma)
 		ban.AllMasu[koma.Position].Moves = far_moves
 	} else {
@@ -700,31 +704,25 @@ func (ban TBan) RemoveKoma(koma_id TKomaId) {
 	target_masu.KomaId = 0
 
 	// 駒がどいたことにより、そのマスに利かせていた駒の利きを再評価
-	for sente_kiki_id, _ := range *(target_masu.SenteKiki) {
-		kiki_koma := ban.AllKoma[sente_kiki_id]
+	ban.RefreshMovesAndKiki(target_masu, Sente)
+	ban.RefreshMovesAndKiki(target_masu, Gote)
+}
+
+func (ban TBan) RefreshMovesAndKiki(masu *TMasu, is_sente TTeban) {
+	kiki := masu.GetKiki(is_sente)
+	for kiki_koma_id, _ := range *kiki {
+		kiki_koma := ban.AllKoma[kiki_koma_id]
 		moves := ban.AllMasu[kiki_koma.Position].Moves
 		if kiki_koma.CanFarMove() {
-			// 利かせてた駒→取り除いた駒へのルートの延長線上のmoveを生成する
-			valid_moves := ban.CreateDeltaFarMovesAndKiki(sente_kiki_id, kiki_koma.Position, target_koma.Position)
-			for _, move := range *valid_moves {
-				AddMove(moves, move)
-			}
+			// 利きがFarMoveによるものかそうでないか判断しにくいので、手も利きもいったん全削除→全追加
+			kiki_koma_masu := ban.AllMasu[kiki_koma.Position]
+			kiki_koma_masu.Moves = nil
+			ban.DeleteAllKiki(kiki_koma)
+			far_moves := ban.CreateFarMovesAndKiki(kiki_koma)
+			kiki_koma_masu.Moves = far_moves
 		} else {
-			AddMove(moves, NewMove(sente_kiki_id, target_koma.Position, 0))
-		}
-	}
-	for gote_kiki_id, _ := range *(target_masu.GoteKiki) {
-		kiki_koma := ban.AllKoma[gote_kiki_id]
-		moves := ban.AllMasu[kiki_koma.Position].Moves
-		// 香、角、飛の場合はその先も追加する必要があるかも？
-		if kiki_koma.CanFarMove() {
-			// 利かせてた駒→取り除いた駒へのルートの延長線上のmoveを生成する
-			valid_moves := ban.CreateDeltaFarMovesAndKiki(gote_kiki_id, kiki_koma.Position, target_koma.Position)
-			for _, move := range *valid_moves {
-				AddMove(moves, move)
-			}
-		} else {
-			AddMove(moves, NewMove(gote_kiki_id, target_koma.Position, 0))
+			// 利きを元に、どいたマスへの手を追加する
+			AddMove(moves, NewMove(kiki_koma_id, masu.Position, 0))
 		}
 	}
 }
@@ -748,93 +746,6 @@ func AddMove(moves *map[byte]*TMove, move *TMove) {
 			(*moves)[i] = move
 			break
 		}
-	}
-}
-
-// 香、角、飛の利きマスの、どいたマスからの手を再作成する
-func (ban TBan) CreateDeltaFarMovesAndKiki(koma_id TKomaId, from complex64, to complex64) *map[byte]*TMove {
-	far_moves := make(map[byte]*TMove)
-	// 作成する方向を求める
-	diff := to - from
-	x := real(diff)
-	y := imag(diff)
-
-	// 完全にコピペ。
-	if (x != 0) && (y != 0) {
-		// 角の場合、左上、右上、左下、右下のどれかを作成する
-		if (x > 0) && (y > 0) {
-			// 左下
-			temp_to := to
-			ban.AddAllFarMovesAndKiki(&far_moves, koma_id, temp_to, complex(1, 1))
-		} else if (x > 0) && (y < 0) {
-			// 左上
-			temp_to := to
-			ban.AddAllFarMovesAndKiki(&far_moves, koma_id, temp_to, complex(1, -1))
-		} else if (x < 0) && (y > 0) {
-			// 右下
-			temp_to := to
-			ban.AddAllFarMovesAndKiki(&far_moves, koma_id, temp_to, complex(-1, 1))
-		} else if (x < 0) && (y < 0) {
-			// 右上
-			temp_to := to
-			ban.AddAllFarMovesAndKiki(&far_moves, koma_id, temp_to, complex(-1, -1))
-		}
-	} else {
-		// 香、飛の場合、上、下、左、右のどれかを削除する
-		if (x == 0) && (y > 0) {
-			// 下
-			temp_to := to
-			ban.AddAllFarMovesAndKiki(&far_moves, koma_id, temp_to, complex(0, 1))
-		} else if (x == 0) && (y < 0) {
-			// 上
-			temp_to := to
-			ban.AddAllFarMovesAndKiki(&far_moves, koma_id, temp_to, complex(0, -1))
-		} else if (x > 0) && (y == 0) {
-			// 左
-			temp_to := to
-			ban.AddAllFarMovesAndKiki(&far_moves, koma_id, temp_to, complex(1, 0))
-		} else if (x < 0) && (y == 0) {
-			// 右
-			temp_to := to
-			ban.AddAllFarMovesAndKiki(&far_moves, koma_id, temp_to, complex(-1, 0))
-		}
-	}
-	return &far_moves
-}
-
-// ↑の正味の処理
-func (ban TBan) AddAllFarMovesAndKiki(moves *map[byte]*TMove, koma_id TKomaId, temp_to complex64, delta complex64) {
-	var i byte = 0
-	koma := ban.AllKoma[koma_id]
-	logger := GetLogger()
-
-	for {
-		if isValidMove(temp_to) {
-			kiki_masu := ban.AllMasu[temp_to]
-			// 利きは駒の有無を問わず保存
-			logger.Trace("koma_id: " + s(koma_id) + " temp_to: " + s(temp_to))
-			kiki_masu.SaveKiki(koma_id, koma.IsSente)
-			target_id := kiki_masu.KomaId
-			if target_id != 0 {
-				// 駒がある
-				target_koma := ban.AllKoma[target_id]
-				if target_koma.IsSente == koma.IsSente {
-					// 自陣営の駒のあるマスには指せない
-					return
-				} else {
-					// 相手の駒は取れる。その先には動けない
-					(*moves)[i] = NewMove(koma.Id, temp_to, target_koma.Id)
-					return
-				}
-			} else {
-				// 駒がないなら指せて、その先をまた確認する
-				(*moves)[i] = NewMove(koma.Id, temp_to, 0)
-				i++
-			}
-		} else {
-			return
-		}
-		temp_to += delta
 	}
 }
 
