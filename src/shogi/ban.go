@@ -34,7 +34,7 @@ func NewBan() *TBan {
 		y++
 	}
 	// 持ち駒用
-	all_masu[Bytes2TPosition(0, 0)] = NewMasu(Bytes2TPosition(0, 0), 0)
+	all_masu[Mochigoma] = NewMasu(Mochigoma, 0)
 
 	ban := TBan{
 		AllMasu:   all_masu,
@@ -92,6 +92,14 @@ func (masu TMasu) GetKiki(is_sente TTeban) *map[TKomaId]string {
 
 func Bytes2TPosition(x byte, y byte) TPosition {
 	return TPosition(complex(float32(x), float32(y)))
+}
+
+func (ban TBan) GetTebanKoma(teban TTeban) *(map[TKomaId]*TKoma) {
+	if teban {
+		return &(ban.SenteKoma)
+	} else {
+		return &(ban.GoteKoma)
+	}
 }
 
 func CreateInitialState() *TBan {
@@ -401,12 +409,15 @@ func (ban TBan) CheckMovesAndKiki(koma *TKoma, moves *map[byte]*TMove) {
 }
 
 func deleteInvalidMoves(org *map[byte]*TMove) *map[byte]*TMove {
+	logger := GetLogger()
 	deleted := make(map[byte]*TMove)
 	var i byte = 0
 	for _, move := range *org {
 		if move.IsValid {
 			deleted[i] = move
 			i++
+		} else {
+			logger.Trace("deleteInvalidMoves[" + move.Display() + "]")
 		}
 	}
 	return &deleted
@@ -426,12 +437,26 @@ func (ban TBan) ApplyMove(usi_move string) {
 	}
 	from_str = usi_move[0:2]
 	to_str = usi_move[2:4]
-	from := str2Position(from_str)
-	to := str2Position(to_str)
+
 	logger := GetLogger()
-	logger.Trace("from: " + s(from) + ", to: " + s(to))
-	// こちらのmoveを実行する
-	ban.DoMove(from, to, promote)
+	// 駒を打つかどうか
+	is_drop := strings.Index(from_str, "*")
+	if is_drop == -1 {
+		// 打たない
+		from := str2Position(from_str)
+		to := str2Position(to_str)
+
+		logger.Trace("from: " + s(from) + ", to: " + s(to))
+		// こちらのmoveを実行する
+		ban.DoMove(from, to, promote)
+	} else {
+		// "*"を含む＝打つ。先手の銀打ちならS*,後手の銀打ちならs*で始め、打つマスの表記は同じ。
+		kind, teban := str2KindAndTeban(from_str)
+		to := str2Position(to_str)
+
+		logger.Trace("駒打: " + teban_map[teban] + disp_map[kind] + ", to: " + s(to))
+		ban.DoDrop(teban, kind, to)
+	}
 }
 
 // 7g -> 7+7i
@@ -441,6 +466,31 @@ func str2Position(str string) TPosition {
 	char_y := str[1:2]
 	byte_y := byte(strings.Index("0abcdefghi", char_y))
 	return Bytes2TPosition(byte_x, byte_y)
+}
+
+// S* -> 銀、先手
+func str2KindAndTeban(str string) (TKind, TTeban) {
+	char := str[0:1]
+	index := strings.Index("PLNSGBRplnsgbr", char)
+	teban := TTeban(index < 7)
+	var kind TKind
+	switch index {
+	case 0, 7:
+		kind = Fu
+	case 1, 8:
+		kind = Kyo
+	case 2, 9:
+		kind = Kei
+	case 3, 10:
+		kind = Gin
+	case 4, 11:
+		kind = Kin
+	case 5, 12:
+		kind = Kaku
+	case 6, 13:
+		kind = Hi
+	}
+	return kind, teban
 }
 
 func (ban TBan) DoMove(from TPosition, to TPosition, promote bool) {
@@ -515,7 +565,7 @@ func (ban TBan) CaptureKoma(koma_id TKomaId) {
 	// 駒のあった場所からIdを削除
 	target_masu.KomaId = 0
 	// 駒の場所を持ち駒とする
-	target_koma.Position = Bytes2TPosition(0, 0)
+	target_koma.Position = Mochigoma
 
 	// 成りフラグをoff
 	target_koma.Promoted = false
@@ -537,12 +587,12 @@ func (ban TBan) RemoveKoma(koma_id TKomaId) {
 	target_masu.KomaId = 0
 
 	// 駒がどいたことにより、そのマスに利かせていた駒の利きを再評価
-	ban.RefreshMovesAndKiki(target_masu, Sente)
-	ban.RefreshMovesAndKiki(target_masu, Gote)
+	ban.RefreshMovesAndKiki(target_masu, Sente, target_koma.IsSente)
+	ban.RefreshMovesAndKiki(target_masu, Gote, target_koma.IsSente)
 }
 
-func (ban TBan) RefreshMovesAndKiki(masu *TMasu, is_sente TTeban) {
-	kiki := masu.GetKiki(is_sente)
+func (ban TBan) RefreshMovesAndKiki(masu *TMasu, kiki_teban TTeban, removed_koma_teban TTeban) {
+	kiki := masu.GetKiki(kiki_teban)
 	for kiki_koma_id, _ := range *kiki {
 		kiki_koma := ban.AllKoma[kiki_koma_id]
 		moves := ban.AllMasu[kiki_koma.Position].Moves
@@ -554,8 +604,11 @@ func (ban TBan) RefreshMovesAndKiki(masu *TMasu, is_sente TTeban) {
 			far_moves := ban.CreateFarMovesAndKiki(kiki_koma)
 			kiki_koma_masu.Moves = far_moves
 		} else {
-			// 利きを元に、どいたマスへの手を追加する
-			AddMove(moves, NewMove(kiki_koma_id, masu.Position, 0))
+			// どいた駒が敵陣営の場合、手は元々あるので、追加する必要はない。
+			if kiki_teban == removed_koma_teban {
+				// 利きを元に、どいたマスへの手を追加する
+				AddMove(moves, NewMove(kiki_koma_id, masu.Position, 0))
+			}
 		}
 	}
 }
@@ -571,12 +624,42 @@ func (ban TBan) DeleteAllKiki(koma *TKoma) {
 	}
 }
 
+func (ban TBan) DoDrop(teban TTeban, kind TKind, to TPosition) {
+	// 打つ駒を特定する
+	koma := ban.FindKoma(teban, kind)
+	if koma == nil {
+		return
+	}
+	// 打つ駒に座標を設定する
+	koma.Position = to
+	// 駒を配置する
+	ban.PutKoma(koma)
+}
+
+func (ban TBan) FindKoma(teban TTeban, kind TKind) *TKoma {
+	teban_koma_map := ban.GetTebanKoma(teban)
+	var found *TKoma = nil
+	for _, koma := range *teban_koma_map {
+		if koma.Kind == kind && koma.Position == Mochigoma {
+			found = koma
+			break
+		}
+	}
+	if found == nil {
+		logger := GetLogger()
+		logger.Trace("ERROR!! koma to drop is not found.")
+	}
+	return found
+}
+
 func AddMove(moves *map[byte]*TMove, move *TMove) {
+	logger := GetLogger()
 	var i byte = 0
 	for ; ; i++ {
 		_, exists := (*moves)[i]
 		if !exists {
 			(*moves)[i] = move
+			logger.Trace("AddMove[" + move.Display() + "]")
 			break
 		}
 	}
@@ -585,6 +668,13 @@ func AddMove(moves *map[byte]*TMove, move *TMove) {
 func (ban TBan) Display() string {
 	var str string = ""
 	// display ban
+	str += "後手の持ち駒："
+	for _, koma := range ban.GoteKoma {
+		if koma.Position == Mochigoma {
+			str += disp_map[koma.Kind] + ", "
+		}
+	}
+	str += "\n"
 	var x, y byte = 9, 1
 	for y <= 9 {
 		x = 9
@@ -601,6 +691,13 @@ func (ban TBan) Display() string {
 		str += "\n"
 		y++
 	}
+	str += "先手の持ち駒："
+	for _, koma := range ban.SenteKoma {
+		if koma.Position == Mochigoma {
+			str += disp_map[koma.Kind] + ", "
+		}
+	}
+	str += "\n"
 	// display move
 	var k TKomaId = 1
 	for ; k <= 40; k++ {

@@ -23,6 +23,15 @@ const (
 	Gote  TTeban = false
 )
 
+var teban_map = map[TTeban]string{
+	Sente: "▲",
+	Gote:  "△",
+}
+
+const (
+	Mochigoma TPosition = complex(0, 0)
+)
+
 var disp_map = map[TKind]string{
 	Fu:    "歩",
 	Kyo:   "香",
@@ -94,16 +103,10 @@ func NewKoma(id TKomaId, kind TKind, x byte, y byte, isSente TTeban) *TKoma {
 }
 
 func (koma TKoma) Display() string {
-	var side_str string
-	if koma.IsSente {
-		side_str = "▲"
-	} else {
-		side_str = "△"
-		if koma.Kind == Gyoku {
-			return "△王"
-		}
+	if koma.IsSente == Gote && koma.Kind == Gyoku {
+		return "△王"
 	}
-	return side_str + koma.Kind.toString(koma.Promoted)
+	return teban_map[koma.IsSente] + koma.Kind.toString(koma.Promoted)
 }
 
 // 他の駒関係なく、盤上で移動できる先を洗い出す
