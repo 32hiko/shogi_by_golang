@@ -1,34 +1,27 @@
 package shogi
 
-import (
-	"fmt"
-)
+import ()
 
 type TMove struct {
-	FromId TKomaId
-	ToX    byte
-	ToY    byte
-	ToId   TKomaId
-	IsValid bool
+	FromId     TKomaId
+	ToPosition TPosition
+	ToId       TKomaId
+	IsValid    bool
 }
 
-func NewMove(from_id TKomaId, position complex64, to_id TKomaId) *TMove {
-	var to_x byte = byte(real(position))
-	var to_y byte = byte(imag(position))
+func NewMove(from_id TKomaId, position TPosition, to_id TKomaId) *TMove {
 	move := TMove{
-		FromId: from_id,
-		ToX:    to_x,
-		ToY:    to_y,
-		ToId:   to_id,
-		IsValid: true,
+		FromId:     from_id,
+		ToPosition: position,
+		ToId:       to_id,
+		IsValid:    true,
 	}
 	return &move
 }
 
-func (move TMove) getToAsComplex() complex64 {
-	return complex(float32(move.ToX), float32(move.ToY))
-}
-
+// 現状、使われてない。
 func (move TMove) Display() string {
-	return fmt.Sprint(move.ToX) + ", " + fmt.Sprint(move.ToY)
+	to_x := real(move.ToPosition)
+	to_y := imag(move.ToPosition)
+	return s(to_x) + ", " + s(to_y)
 }

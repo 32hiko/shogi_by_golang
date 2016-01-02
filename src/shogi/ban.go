@@ -13,7 +13,7 @@ var s = fmt.Sprint
 
 type TBan struct {
 	// マスの位置（複素数）をキーに、マスへのポインタを持つマップ
-	AllMasu map[complex64]*TMasu
+	AllMasu map[TPosition]*TMasu
 	// 駒IDをキーに、駒へのポインタを持つマップ
 	AllKoma   map[TKomaId]*TKoma
 	SenteKoma map[TKomaId]*TKoma
@@ -21,20 +21,20 @@ type TBan struct {
 }
 
 func NewBan() *TBan {
-	all_masu := make(map[complex64]*TMasu)
+	all_masu := make(map[TPosition]*TMasu)
 	// マスを初期化する
 	var x, y byte = 1, 1
 	for y <= 9 {
 		x = 1
 		for x <= 9 {
-			pos := getComplex64(x, y)
+			pos := Bytes2TPosition(x, y)
 			all_masu[pos] = NewMasu(pos, 0)
 			x++
 		}
 		y++
 	}
 	// 持ち駒用
-	all_masu[complex(0, 0)] = NewMasu(complex(0, 0), 0)
+	all_masu[Bytes2TPosition(0, 0)] = NewMasu(Bytes2TPosition(0, 0), 0)
 
 	ban := TBan{
 		AllMasu:   all_masu,
@@ -48,7 +48,7 @@ func NewBan() *TBan {
 // 駒が持つデータ、マスが持つデータは今後も検討要
 type TMasu struct {
 	// マスの座標
-	Position complex64
+	Position TPosition
 	// 駒があれば駒のId
 	KomaId TKomaId
 	// 駒があれば駒の合法手。駒同士の関係は、必ず盤（マス）を介する作りとする。
@@ -58,7 +58,7 @@ type TMasu struct {
 	GoteKiki  *map[TKomaId]string // temp
 }
 
-func NewMasu(position complex64, koma_id TKomaId) *TMasu {
+func NewMasu(position TPosition, koma_id TKomaId) *TMasu {
 	moves := make(map[byte]*TMove)
 	s_kiki := make(map[TKomaId]string)
 	g_kiki := make(map[TKomaId]string)
@@ -90,8 +90,8 @@ func (masu TMasu) GetKiki(is_sente TTeban) *map[TKomaId]string {
 	}
 }
 
-func getComplex64(x byte, y byte) complex64 {
-	return complex(float32(x), float32(y))
+func Bytes2TPosition(x byte, y byte) TPosition {
+	return TPosition(complex(float32(x), float32(y)))
 }
 
 func CreateInitialState() *TBan {
@@ -236,7 +236,7 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 					// komaが敵陣営なら、komaの位置への手でkomaが取れることを手に保存する。
 					var saved bool = false
 					for _, move := range *target_moves {
-						if move.getToAsComplex() == koma.Position {
+						if move.ToPosition == koma.Position {
 							move.ToId = koma.Id
 							saved = true
 							break
@@ -249,7 +249,7 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 				} else {
 					// komaが自陣営なら、komaの位置への手は合法でなくなるので削除が必要。
 					for _, move := range *target_moves {
-						if move.getToAsComplex() == koma.Position {
+						if move.ToPosition == koma.Position {
 							move.IsValid = false
 							break
 						}
@@ -307,7 +307,7 @@ func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *map[byte]*TMove {
 }
 
 // 馬、龍の、成ってできた1マス分だけの手と利きを生成する。処理的にはNと同じ。
-func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta complex64, map_key *byte, moves *map[byte]*TMove) {
+func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition, map_key *byte, moves *map[byte]*TMove) {
 	temp_move := koma.Position
 	if koma.IsSente {
 		temp_move += delta
@@ -343,7 +343,7 @@ func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta complex64, map_key *byte, 
 }
 
 // 香、角、飛の、ある1方向の手と利きを生成する。
-func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta complex64, map_key *byte, moves *map[byte]*TMove) {
+func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta TPosition, map_key *byte, moves *map[byte]*TMove) {
 	temp_move := koma.Position
 	for {
 		if koma.IsSente {
@@ -383,7 +383,7 @@ func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta complex64, map_key *byte,
 // 駒の合法手と利き先マスをチェックする（香、角、飛を除く）
 func (ban TBan) CheckMovesAndKiki(koma *TKoma, moves *map[byte]*TMove) {
 	for _, move := range *moves {
-		temp_pos := move.getToAsComplex()
+		temp_pos := move.ToPosition
 		// 利き先マスに、自駒のIdを保存する
 		kiki_masu := ban.AllMasu[temp_pos]
 		kiki_masu.SaveKiki(koma.Id, koma.IsSente)
@@ -435,15 +435,15 @@ func (ban TBan) ApplyMove(usi_move string) {
 }
 
 // 7g -> 7+7i
-func str2Position(str string) complex64 {
+func str2Position(str string) TPosition {
 	int_x, _ := strconv.Atoi(str[0:1])
-	float_x := float32(int_x)
+	byte_x := byte(int_x)
 	char_y := str[1:2]
-	float_y := float32(strings.Index("0abcdefghi", char_y))
-	return complex(float_x, float_y)
+	byte_y := byte(strings.Index("0abcdefghi", char_y))
+	return Bytes2TPosition(byte_x, byte_y)
 }
 
-func (ban TBan) DoMove(from complex64, to complex64, promote bool) {
+func (ban TBan) DoMove(from TPosition, to TPosition, promote bool) {
 	logger := GetLogger()
 	// fromにある駒を取得
 	from_masu := ban.AllMasu[from]
@@ -458,7 +458,7 @@ func (ban TBan) DoMove(from complex64, to complex64, promote bool) {
 	moves := from_masu.Moves
 	var move *TMove = nil
 	for _, value := range *moves {
-		if value.getToAsComplex() == to {
+		if value.ToPosition == to {
 			move = value
 			break
 		}
@@ -515,7 +515,7 @@ func (ban TBan) CaptureKoma(koma_id TKomaId) {
 	// 駒のあった場所からIdを削除
 	target_masu.KomaId = 0
 	// 駒の場所を持ち駒とする
-	target_koma.Position = complex(0, 0)
+	target_koma.Position = Bytes2TPosition(0, 0)
 
 	// 成りフラグをoff
 	target_koma.Promoted = false
@@ -566,7 +566,7 @@ func (ban TBan) DeleteAllKiki(koma *TKoma) {
 	// 少なくとも、前段の合法手には味方への利きが含まれていない。
 	moves_4_delete_kiki := koma.GetAllMoves()
 	for _, move := range *moves_4_delete_kiki {
-		kiki_masu := ban.AllMasu[move.getToAsComplex()]
+		kiki_masu := ban.AllMasu[move.ToPosition]
 		kiki_masu.DeleteKiki(koma.Id, koma.IsSente)
 	}
 }
@@ -589,7 +589,7 @@ func (ban TBan) Display() string {
 	for y <= 9 {
 		x = 9
 		for x >= 1 {
-			koma_id := ban.AllMasu[getComplex64(x, y)].KomaId
+			koma_id := ban.AllMasu[Bytes2TPosition(x, y)].KomaId
 			if koma_id == 0 {
 				str += "[＿＿]"
 			} else {
@@ -616,12 +616,12 @@ func (ban TBan) Display() string {
 			if len(*moves) > 0 {
 				var index byte = 0
 				for index < byte(len(*moves)) {
-					item := (*moves)[index]
-					if item == nil {
+					move := (*moves)[index]
+					if move == nil {
 						index++
 						continue
 					}
-					temp_pos := item.getToAsComplex()
+					temp_pos := move.ToPosition
 					str += s(temp_pos)
 					str += ", "
 					index++
@@ -635,7 +635,7 @@ func (ban TBan) Display() string {
 	for yy <= 9 {
 		xx = 9
 		for xx >= 1 {
-			pos := getComplex64(xx, yy)
+			pos := Bytes2TPosition(xx, yy)
 			str += "masu: "
 			str += s(pos)
 			str += " kiki: "

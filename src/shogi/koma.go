@@ -5,6 +5,7 @@ import ()
 type TKomaId byte
 type TKind byte
 type TTeban bool
+type TPosition complex64
 
 const (
 	Fu TKind = iota
@@ -43,25 +44,25 @@ var promoted_disp_map = map[TKind]string{
 }
 
 // 将棋だけど東西南北で。直接画面には出ないし。
-var move_n complex64 = complex(0, -1)
-var move_s complex64 = complex(0, 1)
-var move_e complex64 = complex(-1, 0)
-var move_w complex64 = complex(1, 0)
-var move_ne complex64 = move_n + move_e
-var move_nw complex64 = move_n + move_w
-var move_se complex64 = move_s + move_e
-var move_sw complex64 = move_s + move_w
-var move_kei_e complex64 = complex(-1, -2)
-var move_kei_w complex64 = complex(1, -2)
+var move_n TPosition = complex(0, -1)
+var move_s TPosition = complex(0, 1)
+var move_e TPosition = complex(-1, 0)
+var move_w TPosition = complex(1, 0)
+var move_ne TPosition = move_n + move_e
+var move_nw TPosition = move_n + move_w
+var move_se TPosition = move_s + move_e
+var move_sw TPosition = move_s + move_w
+var move_kei_e TPosition = complex(-1, -2)
+var move_kei_w TPosition = complex(1, -2)
 
 // 何マス先でも進める系は、ロジックで。
 
-var move_to_map = map[TKind][]complex64{
-	Fu:    []complex64{move_n},
-	Kei:   []complex64{move_kei_e, move_kei_w},
-	Gin:   []complex64{move_n, move_ne, move_nw, move_se, move_sw},
-	Kin:   []complex64{move_n, move_ne, move_nw, move_e, move_w, move_s},
-	Gyoku: []complex64{move_n, move_ne, move_nw, move_e, move_w, move_s, move_se, move_sw},
+var move_to_map = map[TKind][]TPosition{
+	Fu:    []TPosition{move_n},
+	Kei:   []TPosition{move_kei_e, move_kei_w},
+	Gin:   []TPosition{move_n, move_ne, move_nw, move_se, move_sw},
+	Kin:   []TPosition{move_n, move_ne, move_nw, move_e, move_w, move_s},
+	Gyoku: []TPosition{move_n, move_ne, move_nw, move_e, move_w, move_s, move_se, move_sw},
 }
 
 func (kind TKind) toString(promoted bool) string {
@@ -75,7 +76,7 @@ func (kind TKind) toString(promoted bool) string {
 type TKoma struct {
 	Id       TKomaId
 	Kind     TKind
-	Position complex64
+	Position TPosition
 	IsSente  TTeban
 	Promoted bool
 }
@@ -85,7 +86,7 @@ func NewKoma(id TKomaId, kind TKind, x byte, y byte, isSente TTeban) *TKoma {
 	koma := TKoma{
 		Id:       id,
 		Kind:     kind,
-		Position: complex(float32(x), float32(y)),
+		Position: Bytes2TPosition(x, y),
 		IsSente:  isSente,
 		Promoted: false,
 	}
@@ -173,7 +174,7 @@ func (koma TKoma) CanFarMove() bool {
 	}
 }
 
-func (koma TKoma) CreateNMoves(move complex64, i *byte, moves *map[byte]*TMove) {
+func (koma TKoma) CreateNMoves(move TPosition, i *byte, moves *map[byte]*TMove) {
 	temp_move := koma.Position
 	for {
 		if koma.IsSente {
@@ -190,7 +191,7 @@ func (koma TKoma) CreateNMoves(move complex64, i *byte, moves *map[byte]*TMove) 
 	}
 }
 
-func (koma TKoma) Create1Move(move complex64, i *byte, moves *map[byte]*TMove) {
+func (koma TKoma) Create1Move(move TPosition, i *byte, moves *map[byte]*TMove) {
 	temp_move := koma.Position
 	if koma.IsSente {
 		temp_move += move
@@ -203,7 +204,7 @@ func (koma TKoma) Create1Move(move complex64, i *byte, moves *map[byte]*TMove) {
 	}
 }
 
-func isValidMove(pos complex64) bool {
+func isValidMove(pos TPosition) bool {
 	var x byte = byte(real(pos))
 	var y byte = byte(imag(pos))
 	return (0 < x) && (x < 10) && (0 < y) && (y < 10)
