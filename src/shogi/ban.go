@@ -12,12 +12,11 @@ var p = fmt.Println
 var s = fmt.Sprint
 
 type TBan struct {
-	// マスの位置（複素数）をキーに、マスへのポインタを持つマップ
-	AllMasu map[TPosition]*TMasu
-	// 駒IDをキーに、駒へのポインタを持つマップ
+	AllMasu   map[TPosition]*TMasu
 	AllKoma   map[TKomaId]*TKoma
 	SenteKoma map[TKomaId]*TKoma
 	GoteKoma  map[TKomaId]*TKoma
+	Tesuu     *int
 }
 
 func NewBan() *TBan {
@@ -35,12 +34,14 @@ func NewBan() *TBan {
 	}
 	// 持ち駒用
 	all_masu[Mochigoma] = NewMasu(Mochigoma, 0)
+	var tesuu int = 0
 
 	ban := TBan{
 		AllMasu:   all_masu,
 		AllKoma:   make(map[TKomaId]*TKoma),
 		SenteKoma: make(map[TKomaId]*TKoma),
 		GoteKoma:  make(map[TKomaId]*TKoma),
+		Tesuu:     &tesuu,
 	}
 	return &ban
 }
@@ -457,6 +458,7 @@ func (ban TBan) ApplyMove(usi_move string) {
 		logger.Trace("駒打: " + teban_map[teban] + disp_map[kind] + ", to: " + s(to))
 		ban.DoDrop(teban, kind, to)
 	}
+	*(ban.Tesuu) += 1
 }
 
 // 7g -> 7+7i
@@ -491,6 +493,13 @@ func str2KindAndTeban(str string) (TKind, TTeban) {
 		kind = Hi
 	}
 	return kind, teban
+}
+
+func position2str(pos TPosition) string {
+	int_x := int(real(pos))
+	int_y := int(imag(pos))
+	str := "0abcdefghi"
+	return s(int_x) + str[int_y:int_y+1]
 }
 
 func (ban TBan) DoMove(from TPosition, to TPosition, promote bool) {

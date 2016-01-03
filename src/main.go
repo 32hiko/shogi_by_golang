@@ -37,7 +37,8 @@ func main() {
 	// master ban
 	var master *TBan
 	var tesuu int = 0
-	player := NewPlayer("Slide")
+	//player := NewPlayer("Slide")
+	player := NewPlayer("Random")
 
 	// 将棋所とのやりとり
 	// TODO:いつでも返答すべきコマンドは常時listenするイメージで。GoRoutineとChannelを使えばよさげ
@@ -84,7 +85,11 @@ func main() {
 				}
 				resp("info string "+text, logger)
 			} else if s.HasPrefix(text, "go") {
-				bestmove_str := player.Search(master)
+				bestmove := player.Search(master)
+				master.ApplyMove(bestmove)
+				logger.Trace(master.Display())
+				tesuu++
+				bestmove_str := "bestmove " + bestmove
 				resp(bestmove_str, logger)
 			}
 		}

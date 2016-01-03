@@ -1,6 +1,10 @@
 package shogi
 
-import ()
+import (
+	. "logger"
+	"time"
+	"math/rand"
+)
 
 type IPlayer interface {
 	Search(*TBan) string
@@ -8,17 +12,17 @@ type IPlayer interface {
 
 func NewPlayer(name string) IPlayer {
 	switch name {
-		case "Slide":
-			return NewSlidePlayer()
-		case "Random":
-			return NewRandomPlayer()
-		default:
-			return nil
+	case "Slide":
+		return NewSlidePlayer()
+	case "Random":
+		return NewRandomPlayer()
+	default:
+		return nil
 	}
 }
 
 /*
- * ただ飛車を左右に動かすだけ
+ * ただ飛車を左右に動かすだけ。しかも後手専用
  */
 type TSlidePlayer struct {
 	i *int
@@ -34,9 +38,9 @@ func NewSlidePlayer() *TSlidePlayer {
 func (player TSlidePlayer) Search(ban *TBan) string {
 	var te string
 	if *(player.i)%2 == 0 {
-		te = "bestmove 8b7b"
+		te = "8b7b"
 	} else {
-		te = "bestmove 7b8b"
+		te = "7b8b"
 	}
 	*(player.i)++
 	return te
@@ -54,7 +58,26 @@ func NewRandomPlayer() *TRandomPlayer {
 }
 
 func (player TRandomPlayer) Search(ban *TBan) string {
-	var te string = "bestmove "
-	// ここを実装する
-	return te
+	logger := GetLogger()
+	teban := TTeban(*(ban.Tesuu)%2 == 0)
+	logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " +s(teban))
+	tegoma := ban.GetTebanKoma(teban)
+	all_moves := make(map[byte]*TMove)
+	// いったんは成る手打つ手を考えない
+	for koma_id, koma := range *tegoma {
+		logger.Trace("[RandomPlayer] koma_id: " + s(koma_id))
+		if koma.Position != Mochigoma {
+			masu := ban.AllMasu[koma.Position]
+			for _, move := range *(masu.Moves) {
+				AddMove(&all_moves, move)
+			}
+		}
+	}
+	rand.Seed(time.Now().UnixNano())
+	random_index := rand.Intn(len(all_moves))
+	random_move := all_moves[byte(random_index)]
+	random_koma := (*tegoma)[random_move.FromId]
+	from := random_koma.Position
+	to := random_move.ToPosition
+	return position2str(from) + position2str(to)
 }
