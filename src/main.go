@@ -37,7 +37,7 @@ func main() {
 	// master ban
 	var master *TBan
 	var tesuu int = 0
-	player := NewPlayer()
+	player := NewPlayer("Slide")
 
 	// 将棋所とのやりとり
 	// TODO:いつでも返答すべきコマンドは常時listenするイメージで。GoRoutineとChannelを使えばよさげ
