@@ -253,7 +253,7 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 					}
 					if !saved {
 						// もともと自陣営の駒に利かせていたところ、その駒を取られた場合はmoveが存在していない。
-						AddMove(target_moves, NewMove(target_koma.Id, koma.Position, koma.Id))
+						AddMove(target_moves, NewMove(target_koma.Id, target_koma.Position, koma.Position, koma.Id))
 					}
 				} else {
 					// komaが自陣営なら、komaの位置への手は合法でなくなるので削除が必要。
@@ -337,13 +337,13 @@ func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition, map_key *byte, 
 				return
 			} else {
 				// 相手の駒は取れる。その先には動けない
-				(*moves)[*map_key] = NewMove(koma.Id, temp_move, target_koma.Id)
+				(*moves)[*map_key] = NewMove(koma.Id, koma.Position, temp_move, target_koma.Id)
 				*map_key++
 				return
 			}
 		} else {
 			// 駒がないなら指せて、その先をまた確認する
-			(*moves)[*map_key] = NewMove(koma.Id, temp_move, 0)
+			(*moves)[*map_key] = NewMove(koma.Id, koma.Position, temp_move, 0)
 			*map_key++
 		}
 	} else {
@@ -374,13 +374,13 @@ func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta TPosition, map_key *byte,
 					return
 				} else {
 					// 相手の駒は取れる。その先には動けない
-					(*moves)[*map_key] = NewMove(koma.Id, temp_move, target_koma.Id)
+					(*moves)[*map_key] = NewMove(koma.Id, koma.Position, temp_move, target_koma.Id)
 					*map_key++
 					return
 				}
 			} else {
 				// 駒がないなら指せて、その先をまた確認する
-				(*moves)[*map_key] = NewMove(koma.Id, temp_move, 0)
+				(*moves)[*map_key] = NewMove(koma.Id, koma.Position, temp_move, 0)
 				*map_key++
 			}
 		} else {
@@ -616,7 +616,7 @@ func (ban TBan) RefreshMovesAndKiki(masu *TMasu, kiki_teban TTeban, removed_koma
 			// どいた駒が敵陣営の場合、手は元々あるので、追加する必要はない。
 			if kiki_teban == removed_koma_teban {
 				// 利きを元に、どいたマスへの手を追加する
-				AddMove(moves, NewMove(kiki_koma_id, masu.Position, 0))
+				AddMove(moves, NewMove(kiki_koma_id, kiki_koma.Position, masu.Position, 0))
 			}
 		}
 	}

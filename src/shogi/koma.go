@@ -186,7 +186,7 @@ func (koma TKoma) CreateNMoves(move TPosition, i *byte, moves *map[byte]*TMove) 
 			temp_move -= move
 		}
 		if isValidMove(temp_move) {
-			(*moves)[*i] = NewMove(koma.Id, temp_move, 0)
+			(*moves)[*i] = NewMove(koma.Id, koma.Position, temp_move, 0)
 			*i++
 		} else {
 			return
@@ -202,7 +202,7 @@ func (koma TKoma) Create1Move(move TPosition, i *byte, moves *map[byte]*TMove) {
 		temp_move -= move
 	}
 	if isValidMove(temp_move) {
-		(*moves)[*i] = NewMove(koma.Id, temp_move, 0)
+		(*moves)[*i] = NewMove(koma.Id, koma.Position, temp_move, 0)
 		*i++
 	}
 }
