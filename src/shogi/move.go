@@ -8,6 +8,7 @@ type TMove struct {
 	ToPosition   TPosition
 	ToId         TKomaId
 	IsValid      bool
+	Promote      bool
 }
 
 func NewMove(from_id TKomaId, from_position TPosition, to_position TPosition, to_id TKomaId) *TMove {
@@ -17,10 +18,37 @@ func NewMove(from_id TKomaId, from_position TPosition, to_position TPosition, to
 		ToPosition:   to_position,
 		ToId:         to_id,
 		IsValid:      true,
+		Promote:      false,
 	}
 	return &move
 }
 
+func (move TMove) CanPromote(teban TTeban) (bool, *TMove) {
+	from_y := imag(move.FromPosition)
+	to_y := imag(move.ToPosition)
+	var can_promote bool = false
+	var promote_move *TMove = nil
+	if teban {
+		if (from_y <= 3) || (to_y <= 3) {
+			can_promote = true
+		}
+	} else {
+		if (from_y >= 7) || (to_y >= 7) {
+			can_promote = true
+		}
+	}
+	if can_promote {
+		promote_move = NewMove(move.FromId, move.FromPosition, move.ToPosition, move.ToId)
+		promote_move.Promote = true
+	}
+	return can_promote, promote_move
+}
+
 func (move TMove) Display() string {
-	return "FromId: " + s(move.FromId) + ", FromPosition: " + s(move.FromPosition) + ", ToPosition: " + s(move.ToPosition)
+	var str string = ""
+	str += "FromId: " + s(move.FromId)
+	str += ", FromPosition: " + s(move.FromPosition)
+	str += ", ToPosition: " + s(move.ToPosition)
+	str += ", Promote: " + s(move.Promote)
+	return str
 }

@@ -186,8 +186,16 @@ func (koma TKoma) CreateNMoves(move TPosition, i *byte, moves *map[byte]*TMove) 
 			temp_move -= move
 		}
 		if isValidMove(temp_move) {
-			(*moves)[*i] = NewMove(koma.Id, koma.Position, temp_move, 0)
+			m := NewMove(koma.Id, koma.Position, temp_move, 0)
+			(*moves)[*i] = m
 			*i++
+			if !koma.Promoted {
+				can_promote, promote_move := m.CanPromote(koma.IsSente)
+				if can_promote {
+					(*moves)[*i] = promote_move
+					*i++
+				}
+			}
 		} else {
 			return
 		}
@@ -202,8 +210,16 @@ func (koma TKoma) Create1Move(move TPosition, i *byte, moves *map[byte]*TMove) {
 		temp_move -= move
 	}
 	if isValidMove(temp_move) {
-		(*moves)[*i] = NewMove(koma.Id, koma.Position, temp_move, 0)
+		m := NewMove(koma.Id, koma.Position, temp_move, 0)
+		(*moves)[*i] = m
 		*i++
+		if !koma.Promoted {
+			can_promote, promote_move := m.CanPromote(koma.IsSente)
+			if can_promote {
+				(*moves)[*i] = promote_move
+				*i++
+			}
+		}
 	}
 }
 

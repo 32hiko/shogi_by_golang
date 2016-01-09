@@ -253,7 +253,14 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 					}
 					if !saved {
 						// もともと自陣営の駒に利かせていたところ、その駒を取られた場合はmoveが存在していない。
-						AddMove(target_moves, NewMove(target_koma.Id, target_koma.Position, koma.Position, koma.Id))
+						m := NewMove(target_koma.Id, target_koma.Position, koma.Position, koma.Id)
+						AddMove(target_moves, m)
+						if !target_koma.Promoted {
+							can_promote, promote_move := m.CanPromote(target_koma.IsSente)
+							if can_promote {
+								AddMove(target_moves, promote_move)
+							}
+						}
 					}
 				} else {
 					// komaが自陣営なら、komaの位置への手は合法でなくなるので削除が必要。
@@ -337,14 +344,30 @@ func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition, map_key *byte, 
 				return
 			} else {
 				// 相手の駒は取れる。その先には動けない
-				(*moves)[*map_key] = NewMove(koma.Id, koma.Position, temp_move, target_koma.Id)
+				m := NewMove(koma.Id, koma.Position, temp_move, target_koma.Id)
+				(*moves)[*map_key] = m
 				*map_key++
+				if !koma.Promoted {
+					can_promote, promote_move := m.CanPromote(koma.IsSente)
+					if can_promote {
+						(*moves)[*map_key] = promote_move
+						*map_key++
+					}
+				}
 				return
 			}
 		} else {
 			// 駒がないなら指せて、その先をまた確認する
-			(*moves)[*map_key] = NewMove(koma.Id, koma.Position, temp_move, 0)
+			m := NewMove(koma.Id, koma.Position, temp_move, 0)
+			(*moves)[*map_key] = m
 			*map_key++
+			if !koma.Promoted {
+				can_promote, promote_move := m.CanPromote(koma.IsSente)
+				if can_promote {
+					(*moves)[*map_key] = promote_move
+					*map_key++
+				}
+			}
 		}
 	} else {
 		return
@@ -374,14 +397,30 @@ func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta TPosition, map_key *byte,
 					return
 				} else {
 					// 相手の駒は取れる。その先には動けない
-					(*moves)[*map_key] = NewMove(koma.Id, koma.Position, temp_move, target_koma.Id)
+					m := NewMove(koma.Id, koma.Position, temp_move, target_koma.Id)
+					(*moves)[*map_key] = m
 					*map_key++
+					if !koma.Promoted {
+						can_promote, promote_move := m.CanPromote(koma.IsSente)
+						if can_promote {
+							(*moves)[*map_key] = promote_move
+							*map_key++
+						}
+					}
 					return
 				}
 			} else {
 				// 駒がないなら指せて、その先をまた確認する
-				(*moves)[*map_key] = NewMove(koma.Id, koma.Position, temp_move, 0)
+				m := NewMove(koma.Id, koma.Position, temp_move, 0)
+				(*moves)[*map_key] = m
 				*map_key++
+				if !koma.Promoted {
+					can_promote, promote_move := m.CanPromote(koma.IsSente)
+					if can_promote {
+						(*moves)[*map_key] = promote_move
+						*map_key++
+					}
+				}
 			}
 		} else {
 			return
@@ -616,7 +655,14 @@ func (ban TBan) RefreshMovesAndKiki(masu *TMasu, kiki_teban TTeban, removed_koma
 			// どいた駒が敵陣営の場合、手は元々あるので、追加する必要はない。
 			if kiki_teban == removed_koma_teban {
 				// 利きを元に、どいたマスへの手を追加する
-				AddMove(moves, NewMove(kiki_koma_id, kiki_koma.Position, masu.Position, 0))
+				m := NewMove(kiki_koma_id, kiki_koma.Position, masu.Position, 0)
+				AddMove(moves, m)
+				if !kiki_koma.Promoted {
+					can_promote, promote_move := m.CanPromote(kiki_koma.IsSente)
+					if can_promote {
+						AddMove(moves, promote_move)
+					}
+				}
 			}
 		}
 	}
