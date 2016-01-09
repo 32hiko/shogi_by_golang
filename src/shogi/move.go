@@ -1,6 +1,27 @@
 package shogi
 
-import ()
+import (
+	. "logger"
+)
+
+type TMoves struct {
+	Map map[string]*TMove
+}
+
+func NewMoves() *TMoves {
+	m := make(map[string]*TMove)
+	moves := TMoves{
+		Map: m,
+	}
+	return &moves
+}
+
+func (moves TMoves) Add(move *TMove) {
+	logger := GetLogger()
+	key := move.GetUSIMoveString()
+	moves.Map[key] = move
+	logger.Trace("Add key: " + key + ", move: [" + move.Display() + "]")
+}
 
 type TMove struct {
 	FromId       TKomaId
@@ -42,6 +63,17 @@ func (move TMove) CanPromote(teban TTeban) (bool, *TMove) {
 		promote_move.Promote = true
 	}
 	return can_promote, promote_move
+}
+
+func (move TMove) GetUSIMoveString() string {
+	// TODO 打つ手（fromが0,0の場合）に対応する。
+	from := move.FromPosition
+	to := move.ToPosition
+	return_str := position2str(from) + position2str(to)
+	if move.Promote {
+		return_str += "+"
+	}
+	return return_str
 }
 
 func (move TMove) Display() string {

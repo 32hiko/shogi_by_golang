@@ -68,6 +68,7 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 		logger.Trace("[RandomPlayer] koma_id: " + s(koma_id))
 		if koma.Position != Mochigoma {
 			masu := ban.AllMasu[koma.Position]
+			// TODO moves
 			for _, move := range *(masu.Moves) {
 				AddMove(&all_moves, move)
 			}
@@ -81,11 +82,5 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 	rand.Seed(time.Now().UnixNano())
 	random_index := rand.Intn(len(all_moves))
 	random_move := all_moves[byte(random_index)]
-	from := random_move.FromPosition
-	to := random_move.ToPosition
-	return_str := position2str(from) + position2str(to)
-	if random_move.Promote {
-		return_str += "+"
-	}
-	return return_str
+	return random_move.GetUSIMoveString()
 }
