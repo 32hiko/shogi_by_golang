@@ -73,6 +73,11 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 			}
 		}
 	}
+	moves_count := len(all_moves)
+	logger.Trace("[RandomPlayer] moves: " + s(moves_count))
+	if moves_count == 0 {
+		return "resign"
+	}
 	rand.Seed(time.Now().UnixNano())
 	random_index := rand.Intn(len(all_moves))
 	random_move := all_moves[byte(random_index)]
