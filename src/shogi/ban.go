@@ -497,7 +497,32 @@ func (ban TBan) ApplyMove(usi_move string) {
 		logger.Trace("駒打: " + teban_map[teban] + disp_map[kind] + ", to: " + s(to))
 		ban.DoDrop(teban, kind, to)
 	}
+
+	ban.DeleteSuicideMoves()
 	*(ban.Tesuu) += 1
+}
+
+func (ban TBan) DeleteSuicideMoves() {
+	// 両陣営の玉について、自殺手を削除する
+	ban.DoDeleteSuicideMoves(Sente)
+	ban.DoDeleteSuicideMoves(Gote)
+}
+
+func (ban TBan) DoDeleteSuicideMoves(teban TTeban) {
+	teban_koma := ban.GetTebanKoma(teban)
+	for _, koma := range *teban_koma {
+		if koma.Kind == Gyoku {
+			gyoku_moves := ban.AllMasu[koma.Position].Moves
+			for _, move := range *gyoku_moves {
+				kiki := ban.AllMasu[move.ToPosition].GetKiki(!teban)
+				if len(*kiki) > 0{
+					move.IsValid = false
+				}
+			}
+			ban.AllMasu[koma.Position].Moves = deleteInvalidMoves(gyoku_moves)
+			break
+		}
+	}
 }
 
 // 7g -> 7+7i
