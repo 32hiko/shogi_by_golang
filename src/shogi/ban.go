@@ -54,21 +54,17 @@ type TMasu struct {
 	Position TPosition
 	// 駒があれば駒のId
 	KomaId TKomaId
-	// 駒があれば駒の合法手。駒同士の関係は、必ず盤（マス）を介する作りとする。
-	Moves *map[byte]*TMove
 	// このマスに利かせている駒のIdを入れる。ヒートマップを作るため
 	SenteKiki *map[TKomaId]string // temp
 	GoteKiki  *map[TKomaId]string // temp
 }
 
 func NewMasu(position TPosition, koma_id TKomaId) *TMasu {
-	moves := make(map[byte]*TMove)
 	s_kiki := make(map[TKomaId]string)
 	g_kiki := make(map[TKomaId]string)
 	masu := TMasu{
 		Position:  position,
 		KomaId:    koma_id,
-		Moves:     &moves,
 		SenteKiki: &s_kiki,
 		GoteKiki:  &g_kiki,
 	}
@@ -90,6 +86,14 @@ func (masu TMasu) GetKiki(is_sente TTeban) *map[TKomaId]string {
 		return masu.SenteKiki
 	} else {
 		return masu.GoteKiki
+	}
+}
+
+func (masu TMasu) GetAiteKiki(is_sente TTeban) *map[TKomaId]string {
+	if is_sente {
+		return masu.GoteKiki
+	} else {
+		return masu.SenteKiki
 	}
 }
 
@@ -211,17 +215,14 @@ func (ban TBan) PutKoma(koma *TKoma) {
 	// 配置した駒の合法手、利きを作成
 	if koma.CanFarMove() {
 		// 香、角、飛、馬、龍の遠利き部分。駒の有無も考慮しつつ作成する。
-		far_moves := ban.CreateFarMovesAndKiki(koma)
-		ban.AllMasu[koma.Position].Moves = far_moves
-		// TODO moves
+		ban.AllMoves[koma.Id] = ban.CreateFarMovesAndKiki(koma)
 	} else {
+		// TODO 同じロジックを使えるようになったはず。
 		// 駒から、その駒の機械的な利き先を取得する
 		all_moves := koma.GetAllMoves()
 		// 機械的な利き先のうち自陣営の駒がいるマスを除き、有効な指し手となるマスを保存する
 		ban.CheckMovesAndKiki(koma, all_moves)
-		valid_moves := deleteInvalidMoves(all_moves)
-		ban.AllMasu[koma.Position].Moves = valid_moves
-		// TODO moves
+		ban.AllMoves[koma.Id] = all_moves.DeleteInvalidMoves()
 	}
 
 	// 自マスに、他の駒からの利きとしてIdが入っている場合で、香、角、飛の場合は先の利きを止める
@@ -235,23 +236,16 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 	if len(*kiki_map) > 0 {
 		for koma_id, _ := range *kiki_map {
 			target_koma := ban.AllKoma[koma_id]
-			target_moves := ban.AllMasu[target_koma.Position].Moves
-			// TODO moves
 			if target_koma.CanFarMove() {
 				// 手も利きもいったん削除し、作りなおす
 				// 利きがFarMoveによるものかそうでないか判断しにくいので、手も利きもいったん全削除→全追加
-				target_koma_masu := ban.AllMasu[target_koma.Position]
-				target_koma_masu.Moves = nil
-				// TODO moves
 				ban.DeleteAllKiki(target_koma)
-				far_moves := ban.CreateFarMovesAndKiki(target_koma)
-				target_koma_masu.Moves = far_moves
-				// TODO moves
+				ban.AllMoves[koma_id] = ban.CreateFarMovesAndKiki(target_koma)
 			} else {
 				if koma.IsSente != is_sente {
 					// komaが敵陣営なら、komaの位置への手でkomaが取れることを手に保存する。
 					var saved bool = false
-					for _, move := range *target_moves {
+					for _, move := range ban.AllMoves[koma_id].Map {
 						if move.ToPosition == koma.Position {
 							move.ToId = koma.Id
 							saved = true
@@ -261,86 +255,92 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 					if !saved {
 						// もともと自陣営の駒に利かせていたところ、その駒を取られた場合はmoveが存在していない。
 						m := NewMove(target_koma.Id, target_koma.Position, koma.Position, koma.Id)
-						AddMove(target_moves, m)
+						ban.AllMoves[koma_id].Add(m)
 						if !target_koma.Promoted {
 							can_promote, promote_move := m.CanPromote(target_koma.IsSente)
 							if can_promote {
-								AddMove(target_moves, promote_move)
+								ban.AllMoves[koma_id].Add(promote_move)
 							}
 						}
 					}
 				} else {
 					// komaが自陣営なら、komaの位置への手は合法でなくなるので削除が必要。
-					for _, move := range *target_moves {
+					for _, move := range ban.AllMoves[koma_id].Map {
 						if move.ToPosition == koma.Position {
 							move.IsValid = false
 							break
 						}
 					}
 				}
-				valid_moves := deleteInvalidMoves(target_moves)
-				ban.AllMasu[target_koma.Position].Moves = valid_moves
-				// TODO moves
+				ban.AllMoves[koma_id] = ban.AllMoves[koma_id].DeleteInvalidMoves()
 			}
 		}
 	}
 }
 
 // 香、角、飛の、全方向の手と利きを生成する。
-func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *map[byte]*TMove {
-	moves := make(map[byte]*TMove)
-	var i byte = 0
+func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *TMoves {
+	moves := NewMoves()
 	if koma.Promoted {
 		switch koma.Kind {
 		case Kaku:
-			ban.CreateNMovesAndKiki(koma, move_ne, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_se, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_nw, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_sw, &i, &moves)
-			ban.Create1MoveAndKiki(koma, move_n, &i, &moves)
-			ban.Create1MoveAndKiki(koma, move_s, &i, &moves)
-			ban.Create1MoveAndKiki(koma, move_e, &i, &moves)
-			ban.Create1MoveAndKiki(koma, move_w, &i, &moves)
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_ne))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_se))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_nw))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_sw))
+			m, _ := ban.Create1MoveAndKiki(koma, move_n)
+			moves.AddAll(m)
+			m, _ = ban.Create1MoveAndKiki(koma, move_s)
+			moves.AddAll(m)
+			m, _ = ban.Create1MoveAndKiki(koma, move_e)
+			moves.AddAll(m)
+			m, _ = ban.Create1MoveAndKiki(koma, move_w)
+			moves.AddAll(m)
 		case Hi:
-			ban.CreateNMovesAndKiki(koma, move_n, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_s, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_e, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_w, &i, &moves)
-			ban.Create1MoveAndKiki(koma, move_ne, &i, &moves)
-			ban.Create1MoveAndKiki(koma, move_se, &i, &moves)
-			ban.Create1MoveAndKiki(koma, move_nw, &i, &moves)
-			ban.Create1MoveAndKiki(koma, move_sw, &i, &moves)
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_n))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_s))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_e))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_w))
+			m, _ := ban.Create1MoveAndKiki(koma, move_ne)
+			moves.AddAll(m)
+			m, _ = ban.Create1MoveAndKiki(koma, move_se)
+			moves.AddAll(m)
+			m, _ = ban.Create1MoveAndKiki(koma, move_nw)
+			moves.AddAll(m)
+			m, _ = ban.Create1MoveAndKiki(koma, move_sw)
+			moves.AddAll(m)
 		}
 	} else {
 		switch koma.Kind {
 		case Kyo:
-			ban.CreateNMovesAndKiki(koma, move_n, &i, &moves)
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_n))
 		case Kaku:
-			ban.CreateNMovesAndKiki(koma, move_ne, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_se, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_nw, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_sw, &i, &moves)
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_ne))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_se))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_nw))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_sw))
 		case Hi:
-			ban.CreateNMovesAndKiki(koma, move_n, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_s, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_e, &i, &moves)
-			ban.CreateNMovesAndKiki(koma, move_w, &i, &moves)
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_n))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_s))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_e))
+			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_w))
 		}
 	}
-	return &moves
+	return moves
 }
 
 // 馬、龍の、成ってできた1マス分だけの手と利きを生成する。処理的にはNと同じ。
-func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition, map_key *byte, moves *map[byte]*TMove) {
-	temp_move := koma.Position
+func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition) ([]*TMove, bool) {
+	slice := make([]*TMove, 0)
+	var to_pos TPosition
 	if koma.IsSente {
-		temp_move += delta
+		to_pos = koma.Position + delta
 	} else {
-		temp_move -= delta
+		to_pos = koma.Position - delta
 	}
-	if isValidMove(temp_move) {
+	if to_pos.IsValidMove() {
 		// 利き先マスに、自駒のIdを保存する
-		kiki_masu := ban.AllMasu[temp_move]
+		kiki_masu := ban.AllMasu[to_pos]
 		kiki_masu.SaveKiki(koma.Id, koma.IsSente)
 		target_id := kiki_masu.KomaId
 		// 利き先マスに、駒があるかないか
@@ -349,96 +349,54 @@ func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition, map_key *byte, 
 			target_koma := ban.AllKoma[target_id]
 			if target_koma.IsSente == koma.IsSente {
 				// 自陣営の駒のあるマスには指せない
-				return
+				return slice, false
 			} else {
 				// 相手の駒は取れる。その先には動けない
-				m := NewMove(koma.Id, koma.Position, temp_move, target_koma.Id)
-				(*moves)[*map_key] = m
-				*map_key++
+				m := NewMove(koma.Id, koma.Position, to_pos, target_koma.Id)
+				slice = append(slice, m)
 				if !koma.Promoted {
 					can_promote, promote_move := m.CanPromote(koma.IsSente)
 					if can_promote {
-						(*moves)[*map_key] = promote_move
-						*map_key++
+						slice = append(slice, promote_move)
 					}
 				}
-				return
+				return slice, false
 			}
 		} else {
-			// 駒がないなら指せて、その先をまた確認する
-			m := NewMove(koma.Id, koma.Position, temp_move, 0)
-			(*moves)[*map_key] = m
-			*map_key++
+			// 駒がないなら指せる
+			m := NewMove(koma.Id, koma.Position, to_pos, 0)
+			slice = append(slice, m)
 			if !koma.Promoted {
 				can_promote, promote_move := m.CanPromote(koma.IsSente)
 				if can_promote {
-					(*moves)[*map_key] = promote_move
-					*map_key++
+					slice = append(slice, promote_move)
 				}
 			}
+			return slice, true
 		}
-	} else {
-		return
 	}
+	return slice, false
 }
 
 // 香、角、飛の、ある1方向の手と利きを生成する。
-func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta TPosition, map_key *byte, moves *map[byte]*TMove) {
-	temp_move := koma.Position
+func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta TPosition) []*TMove {
+	slice := make([]*TMove, 0)
+	delta_base := delta
 	for {
-		if koma.IsSente {
-			temp_move += delta
+		moves, keep := ban.Create1MoveAndKiki(koma, delta_base)
+		slice = append(slice, moves...)
+		if keep {
+			delta_base += delta
 		} else {
-			temp_move -= delta
-		}
-		if isValidMove(temp_move) {
-			// 利き先マスに、自駒のIdを保存する
-			kiki_masu := ban.AllMasu[temp_move]
-			kiki_masu.SaveKiki(koma.Id, koma.IsSente)
-			target_id := kiki_masu.KomaId
-			// 利き先マスに、駒があるかないか
-			if target_id != 0 {
-				// 駒がある
-				target_koma := ban.AllKoma[target_id]
-				if target_koma.IsSente == koma.IsSente {
-					// 自陣営の駒のあるマスには指せない
-					return
-				} else {
-					// 相手の駒は取れる。その先には動けない
-					m := NewMove(koma.Id, koma.Position, temp_move, target_koma.Id)
-					(*moves)[*map_key] = m
-					*map_key++
-					if !koma.Promoted {
-						can_promote, promote_move := m.CanPromote(koma.IsSente)
-						if can_promote {
-							(*moves)[*map_key] = promote_move
-							*map_key++
-						}
-					}
-					return
-				}
-			} else {
-				// 駒がないなら指せて、その先をまた確認する
-				m := NewMove(koma.Id, koma.Position, temp_move, 0)
-				(*moves)[*map_key] = m
-				*map_key++
-				if !koma.Promoted {
-					can_promote, promote_move := m.CanPromote(koma.IsSente)
-					if can_promote {
-						(*moves)[*map_key] = promote_move
-						*map_key++
-					}
-				}
-			}
-		} else {
-			return
+			break
 		}
 	}
+	return slice
 }
 
 // 駒の合法手と利き先マスをチェックする（香、角、飛を除く）
-func (ban TBan) CheckMovesAndKiki(koma *TKoma, moves *map[byte]*TMove) {
-	for _, move := range *moves {
+func (ban TBan) CheckMovesAndKiki(koma *TKoma, moves *TMoves) {
+	for _, move := range moves.Map {
 		temp_pos := move.ToPosition
 		// 利き先マスに、自駒のIdを保存する
 		kiki_masu := ban.AllMasu[temp_pos]
@@ -454,21 +412,6 @@ func (ban TBan) CheckMovesAndKiki(koma *TKoma, moves *map[byte]*TMove) {
 			}
 		}
 	}
-}
-
-func deleteInvalidMoves(org *map[byte]*TMove) *map[byte]*TMove {
-	logger := GetLogger()
-	deleted := make(map[byte]*TMove)
-	var i byte = 0
-	for _, move := range *org {
-		if move.IsValid {
-			deleted[i] = move
-			i++
-		} else {
-			logger.Trace("deleteInvalidMoves[" + move.Display() + "]")
-		}
-	}
-	return &deleted
 }
 
 // USI形式のmoveを反映させる。
@@ -506,8 +449,32 @@ func (ban TBan) ApplyMove(usi_move string) {
 		ban.DoDrop(teban, kind, to)
 	}
 
+	ban.UpdateMoves()
 	ban.DeleteSuicideMoves()
 	*(ban.Tesuu) += 1
+}
+
+func (ban TBan) UpdateMoves() {
+	// 両陣営の玉について、手を生成し直す（次のロジックによる削除が、自動では復元されないので）
+	ban.DoUpdateMoves(Sente)
+	ban.DoUpdateMoves(Gote)
+}
+
+func (ban TBan) DoUpdateMoves(teban TTeban) {
+	teban_koma := ban.GetTebanKoma(teban)
+	for _, koma := range *teban_koma {
+		if koma.Kind == Gyoku {
+			// TODO 同じロジックを使えるようになったはず。
+			// 駒から、その駒の機械的な利き先を取得する
+			all_moves := koma.GetAllMoves()
+			// 機械的な利き先のうち自陣営の駒がいるマスを除き、有効な指し手となるマスを保存する
+			ban.CheckMovesAndKiki(koma, all_moves)
+			ban.AllMoves[koma.Id] = all_moves.DeleteInvalidMoves()
+			logger := GetLogger()
+			logger.Trace("DoUpdateMoves is sente: " + s(teban))
+			break
+		}
+	}
 }
 
 func (ban TBan) DeleteSuicideMoves() {
@@ -520,16 +487,16 @@ func (ban TBan) DoDeleteSuicideMoves(teban TTeban) {
 	teban_koma := ban.GetTebanKoma(teban)
 	for _, koma := range *teban_koma {
 		if koma.Kind == Gyoku {
-			gyoku_moves := ban.AllMasu[koma.Position].Moves
-			// TODO moves
-			for _, move := range *gyoku_moves {
-				kiki := ban.AllMasu[move.ToPosition].GetKiki(!teban)
-				if len(*kiki) > 0{
+			for _, move := range ban.AllMoves[koma.Id].Map {
+				kiki := ban.AllMasu[move.ToPosition].GetAiteKiki(teban)
+				if len(*kiki) > 0 {
+					// TODO 当たっている利きが遠利きかどうか確認する処理も必要。
 					move.IsValid = false
+					logger := GetLogger()
+					logger.Trace("DoDeleteSuicideMoves is sente: " + s(teban))
 				}
 			}
-			ban.AllMasu[koma.Position].Moves = deleteInvalidMoves(gyoku_moves)
-			// TODO moves
+			ban.AllMoves[koma.Id] = ban.AllMoves[koma.Id].DeleteInvalidMoves()
 			break
 		}
 	}
@@ -588,10 +555,9 @@ func (ban TBan) DoMove(from TPosition, to TPosition, promote bool) {
 	}
 
 	// fromにある手を取得
-	moves := from_masu.Moves
-	// TODO moves
+	moves := ban.AllMoves[from_koma.Id]
 	var move *TMove = nil
-	for _, value := range *moves {
+	for _, value := range moves.Map {
 		if value.ToPosition == to {
 			move = value
 			break
@@ -606,7 +572,12 @@ func (ban TBan) DoMove(from TPosition, to TPosition, promote bool) {
 			// 相手の駒を取る手ではない
 		} else {
 			// 相手の駒を取る
-			ban.CaptureKoma(move.ToId)
+			capture_koma := ban.AllKoma[move.ToId]
+			if capture_koma.Position != to {
+				logger.Trace("ERROR!! capture_koma id " + s(move.ToId) + " is at: " + s(capture_koma.Position))
+			} else {
+				ban.CaptureKoma(move.ToId)
+			}
 		}
 	}
 
@@ -629,8 +600,7 @@ func (ban TBan) CaptureKoma(koma_id TKomaId) {
 
 	// 駒の合法手を削除
 	target_masu := ban.AllMasu[target_koma.Position]
-	target_masu.Moves = nil
-	// TODO moves
+	ban.AllMoves[koma_id] = NewMoves()
 
 	// 駒の利きを削除
 	// 駒からgetAllMoveで全利き候補を取ってそこから削除するのが論理的か。
@@ -663,8 +633,7 @@ func (ban TBan) RemoveKoma(koma_id TKomaId) {
 
 	// 駒の合法手を削除
 	target_masu := ban.AllMasu[target_koma.Position]
-	target_masu.Moves = nil
-	// TODO moves
+	ban.AllMoves[koma_id] = NewMoves()
 
 	// 駒の利きを削除
 	ban.DeleteAllKiki(target_koma)
@@ -681,28 +650,28 @@ func (ban TBan) RefreshMovesAndKiki(masu *TMasu, kiki_teban TTeban, removed_koma
 	kiki := masu.GetKiki(kiki_teban)
 	for kiki_koma_id, _ := range *kiki {
 		kiki_koma := ban.AllKoma[kiki_koma_id]
-		moves := ban.AllMasu[kiki_koma.Position].Moves
-		// TODO: moves
 		if kiki_koma.CanFarMove() {
 			// 利きがFarMoveによるものかそうでないか判断しにくいので、手も利きもいったん全削除→全追加
-			kiki_koma_masu := ban.AllMasu[kiki_koma.Position]
-			kiki_koma_masu.Moves = nil
-			// TODO moves
 			ban.DeleteAllKiki(kiki_koma)
-			far_moves := ban.CreateFarMovesAndKiki(kiki_koma)
-			kiki_koma_masu.Moves = far_moves
-			// TODO moves
+			ban.AllMoves[kiki_koma_id] = ban.CreateFarMovesAndKiki(kiki_koma)
 		} else {
-			// どいた駒が敵陣営の場合、手は元々あるので、追加する必要はない。
 			if kiki_teban == removed_koma_teban {
 				// 利きを元に、どいたマスへの手を追加する
 				m := NewMove(kiki_koma_id, kiki_koma.Position, masu.Position, 0)
-				AddMove(moves, m)
+				ban.AllMoves[kiki_koma_id].Add(m)
 				if !kiki_koma.Promoted {
 					can_promote, promote_move := m.CanPromote(kiki_koma.IsSente)
 					if can_promote {
-						AddMove(moves, promote_move)
+						ban.AllMoves[kiki_koma_id].Add(promote_move)
 					}
+				}
+			} else {
+				// どいた駒が敵陣営の場合、手は元々あるので、追加する必要はないが、その駒を取れなくなる。
+				for _,move := range ban.AllMoves[kiki_koma_id].Map {
+					if move.ToPosition == masu.Position {
+						move.ToId = 0
+					}
+					break
 				}
 			}
 		}
@@ -714,7 +683,7 @@ func (ban TBan) DeleteAllKiki(koma *TKoma) {
 	// 駒からgetAllMoveで全利き候補を取ってそこから削除するのが論理的か。
 	// 少なくとも、前段の合法手には味方への利きが含まれていない。
 	moves_4_delete_kiki := koma.GetAllMoves()
-	for _, move := range *moves_4_delete_kiki {
+	for _, move := range moves_4_delete_kiki.Map {
 		kiki_masu := ban.AllMasu[move.ToPosition]
 		kiki_masu.DeleteKiki(koma.Id, koma.IsSente)
 	}
@@ -749,13 +718,13 @@ func (ban TBan) FindKoma(teban TTeban, kind TKind) *TKoma {
 }
 
 func AddMove(moves *map[byte]*TMove, move *TMove) {
-	logger := GetLogger()
+	// logger := GetLogger()
 	var i byte = 0
 	for ; ; i++ {
 		_, exists := (*moves)[i]
 		if !exists {
 			(*moves)[i] = move
-			logger.Trace("AddMove[" + move.Display() + "]")
+			// logger.Trace("AddMove[" + move.Display() + "]")
 			break
 		}
 	}
@@ -804,21 +773,14 @@ func (ban TBan) Display() string {
 		str += ", position:"
 		str += s(koma.Position)
 		str += ", move:"
-		if isValidMove(koma.Position) {
-			moves := ban.AllMasu[koma.Position].Moves
-			if len(*moves) > 0 {
-				var index byte = 0
-				for index < byte(len(*moves)) {
-					move := (*moves)[index]
-					if move == nil {
-						index++
-						continue
-					}
-					temp_pos := move.ToPosition
-					str += s(temp_pos)
-					str += ", "
-					index++
+		if koma.Position.IsValidMove() {
+			moves := ban.AllMoves[koma.Id]
+			for _, move := range moves.Map {
+				str += s(move.ToPosition)
+				if move.Promote {
+					str += "+"
 				}
+				str += ", "
 			}
 		}
 		str += "\n"

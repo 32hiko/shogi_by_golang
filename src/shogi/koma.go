@@ -109,62 +109,6 @@ func (koma TKoma) Display() string {
 	return teban_map[koma.IsSente] + koma.Kind.toString(koma.Promoted)
 }
 
-// 他の駒関係なく、盤上で移動できる先を洗い出す
-func (koma TKoma) GetAllMoves() *map[byte]*TMove {
-	all_move := make(map[byte]*TMove)
-	var i byte = 0
-	if koma.Promoted {
-		switch koma.Kind {
-		case Kaku:
-			koma.CreateNMoves(move_ne, &i, &all_move)
-			koma.CreateNMoves(move_se, &i, &all_move)
-			koma.CreateNMoves(move_nw, &i, &all_move)
-			koma.CreateNMoves(move_sw, &i, &all_move)
-			koma.Create1Move(move_n, &i, &all_move)
-			koma.Create1Move(move_s, &i, &all_move)
-			koma.Create1Move(move_e, &i, &all_move)
-			koma.Create1Move(move_w, &i, &all_move)
-		case Hi:
-			koma.CreateNMoves(move_n, &i, &all_move)
-			koma.CreateNMoves(move_s, &i, &all_move)
-			koma.CreateNMoves(move_e, &i, &all_move)
-			koma.CreateNMoves(move_w, &i, &all_move)
-			koma.Create1Move(move_ne, &i, &all_move)
-			koma.Create1Move(move_se, &i, &all_move)
-			koma.Create1Move(move_nw, &i, &all_move)
-			koma.Create1Move(move_sw, &i, &all_move)
-		default:
-			// と、杏、圭、全
-			moves := move_to_map[Kin]
-			for _, pos := range moves {
-				koma.Create1Move(pos, &i, &all_move)
-			}
-		}
-	} else {
-		switch koma.Kind {
-		case Kyo:
-			koma.CreateNMoves(move_n, &i, &all_move)
-		case Kaku:
-			koma.CreateNMoves(move_ne, &i, &all_move)
-			koma.CreateNMoves(move_se, &i, &all_move)
-			koma.CreateNMoves(move_nw, &i, &all_move)
-			koma.CreateNMoves(move_sw, &i, &all_move)
-		case Hi:
-			koma.CreateNMoves(move_n, &i, &all_move)
-			koma.CreateNMoves(move_s, &i, &all_move)
-			koma.CreateNMoves(move_e, &i, &all_move)
-			koma.CreateNMoves(move_w, &i, &all_move)
-		default:
-			// 歩、桂、銀、金、玉
-			moves := move_to_map[koma.Kind]
-			for _, pos := range moves {
-				koma.Create1Move(pos, &i, &all_move)
-			}
-		}
-	}
-	return &all_move
-}
-
 func (koma TKoma) CanFarMove() bool {
 	if koma.Promoted {
 		if koma.Kind == Kaku || koma.Kind == Hi {
@@ -177,54 +121,100 @@ func (koma TKoma) CanFarMove() bool {
 	}
 }
 
-func (koma TKoma) CreateNMoves(move TPosition, i *byte, moves *map[byte]*TMove) {
-	temp_move := koma.Position
-	for {
-		if koma.IsSente {
-			temp_move += move
-		} else {
-			temp_move -= move
-		}
-		if isValidMove(temp_move) {
-			m := NewMove(koma.Id, koma.Position, temp_move, 0)
-			(*moves)[*i] = m
-			*i++
-			if !koma.Promoted {
-				can_promote, promote_move := m.CanPromote(koma.IsSente)
-				if can_promote {
-					(*moves)[*i] = promote_move
-					*i++
-				}
+// 他の駒関係なく、盤上で移動できる先を洗い出す
+func (koma TKoma) GetAllMoves() *TMoves {
+	moves := NewMoves()
+
+	if koma.Promoted {
+		switch koma.Kind {
+		case Kaku:
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_ne))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_se))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_nw))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_sw))
+			moves.AddAll(koma.CreateMovesFromDelta(move_n))
+			moves.AddAll(koma.CreateMovesFromDelta(move_s))
+			moves.AddAll(koma.CreateMovesFromDelta(move_e))
+			moves.AddAll(koma.CreateMovesFromDelta(move_w))
+		case Hi:
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_n))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_s))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_e))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_w))
+			moves.AddAll(koma.CreateMovesFromDelta(move_ne))
+			moves.AddAll(koma.CreateMovesFromDelta(move_se))
+			moves.AddAll(koma.CreateMovesFromDelta(move_nw))
+			moves.AddAll(koma.CreateMovesFromDelta(move_sw))
+		default:
+			// と、杏、圭、全
+			deltas := move_to_map[Kin]
+			for _, delta := range deltas {
+				moves.AddAll(koma.CreateMovesFromDelta(delta))
 			}
-		} else {
-			return
+		}
+	} else {
+		switch koma.Kind {
+		case Kyo:
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_n))
+		case Kaku:
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_ne))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_se))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_nw))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_sw))
+		case Hi:
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_n))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_s))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_e))
+			moves.AddAll(koma.CreateFarMovesFromDelta(move_w))
+		default:
+			// 歩、桂、銀、金、玉
+			deltas := move_to_map[koma.Kind]
+			for _, delta := range deltas {
+				moves.AddAll(koma.CreateMovesFromDelta(delta))
+			}
 		}
 	}
+	return moves
 }
 
-func (koma TKoma) Create1Move(move TPosition, i *byte, moves *map[byte]*TMove) {
-	temp_move := koma.Position
-	if koma.IsSente {
-		temp_move += move
-	} else {
-		temp_move -= move
+func (koma TKoma) CreateFarMovesFromDelta(delta TPosition) []*TMove {
+	slice := make([]*TMove, 0)
+	delta_base := delta
+	for {
+		moves := koma.CreateMovesFromDelta(delta_base)
+		if len(moves) > 0 {
+			slice = append(slice, moves...)
+			delta_base += delta
+		} else {
+			break
+		}
 	}
-	if isValidMove(temp_move) {
-		m := NewMove(koma.Id, koma.Position, temp_move, 0)
-		(*moves)[*i] = m
-		*i++
+	return slice
+}
+
+func (koma TKoma) CreateMovesFromDelta(delta TPosition) []*TMove {
+	slice := make([]*TMove, 0)
+	var to_pos TPosition
+	if koma.IsSente {
+		to_pos = koma.Position + delta
+	} else {
+		to_pos = koma.Position - delta
+	}
+	if to_pos.IsValidMove() {
+		m := NewMove(koma.Id, koma.Position, to_pos, 0)
+		slice = append(slice, m)
 		if !koma.Promoted {
 			can_promote, promote_move := m.CanPromote(koma.IsSente)
 			if can_promote {
-				(*moves)[*i] = promote_move
-				*i++
+				slice = append(slice, promote_move)
 			}
 		}
 	}
+	return slice
 }
 
-func isValidMove(pos TPosition) bool {
-	var x byte = byte(real(pos))
-	var y byte = byte(imag(pos))
+func (position TPosition) IsValidMove() bool {
+	x := real(position)
+	y := imag(position)
 	return (0 < x) && (x < 10) && (0 < y) && (y < 10)
 }

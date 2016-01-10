@@ -86,9 +86,11 @@ func main() {
 				resp("info string "+text, logger)
 			} else if s.HasPrefix(text, "go") {
 				bestmove := player.Search(master)
-				master.ApplyMove(bestmove)
-				logger.Trace(master.Display())
-				tesuu++
+				if len(bestmove) < 6 {
+					master.ApplyMove(bestmove)
+					logger.Trace(master.Display())
+					tesuu++
+				}
 				bestmove_str := "bestmove " + bestmove
 				resp(bestmove_str, logger)
 			}

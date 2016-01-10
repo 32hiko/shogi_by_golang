@@ -17,10 +17,31 @@ func NewMoves() *TMoves {
 }
 
 func (moves TMoves) Add(move *TMove) {
-	logger := GetLogger()
+	// logger := GetLogger()
 	key := move.GetUSIMoveString()
 	moves.Map[key] = move
-	logger.Trace("Add key: " + key + ", move: [" + move.Display() + "]")
+	// logger.Trace("Add key: " + key + ", move: [" + move.Display() + "]")
+}
+
+func (moves TMoves) AddAll(slice []*TMove) {
+	for _, v := range slice {
+		if v != nil {
+			moves.Add(v)
+		}
+	}
+}
+
+func (moves TMoves) DeleteInvalidMoves() *TMoves {
+	logger := GetLogger()
+	deleted := NewMoves()
+	for _, move := range moves.Map {
+		if move.IsValid {
+			deleted.Add(move)
+		} else {
+			logger.Trace("DeleteInvalidMoves[" + move.Display() + "]")
+		}
+	}
+	return deleted
 }
 
 type TMove struct {

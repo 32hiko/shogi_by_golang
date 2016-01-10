@@ -60,16 +60,14 @@ func NewRandomPlayer() *TRandomPlayer {
 func (player TRandomPlayer) Search(ban *TBan) string {
 	logger := GetLogger()
 	teban := TTeban(*(ban.Tesuu)%2 == 0)
-	logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " +s(teban))
+	// logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " +s(teban))
 	tegoma := ban.GetTebanKoma(teban)
 	all_moves := make(map[byte]*TMove)
 	// いったんは打つ手を考えない
 	for koma_id, koma := range *tegoma {
-		logger.Trace("[RandomPlayer] koma_id: " + s(koma_id))
+		// logger.Trace("[RandomPlayer] koma_id: " + s(koma_id))
 		if koma.Position != Mochigoma {
-			masu := ban.AllMasu[koma.Position]
-			// TODO moves
-			for _, move := range *(masu.Moves) {
+			for _, move := range ban.AllMoves[koma_id].Map {
 				AddMove(&all_moves, move)
 			}
 		}
