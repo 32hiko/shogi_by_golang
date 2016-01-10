@@ -213,17 +213,7 @@ func (ban TBan) PutKoma(koma *TKoma) {
 	ban.AllMasu[koma.Position].KomaId = koma.Id
 
 	// 配置した駒の合法手、利きを作成
-	if koma.CanFarMove() {
-		// 香、角、飛、馬、龍の遠利き部分。駒の有無も考慮しつつ作成する。
-		ban.AllMoves[koma.Id] = ban.CreateFarMovesAndKiki(koma)
-	} else {
-		// TODO 同じロジックを使えるようになったはず。
-		// 駒から、その駒の機械的な利き先を取得する
-		all_moves := koma.GetAllMoves()
-		// 機械的な利き先のうち自陣営の駒がいるマスを除き、有効な指し手となるマスを保存する
-		ban.CheckMovesAndKiki(koma, all_moves)
-		ban.AllMoves[koma.Id] = all_moves.DeleteInvalidMoves()
-	}
+	ban.AllMoves[koma.Id] = ban.CreateFarMovesAndKiki(koma)
 
 	// 自マスに、他の駒からの利きとしてIdが入っている場合で、香、角、飛の場合は先の利きを止める
 	// こちらも、龍や馬の周囲に駒を打った場合、的外れな方向の手や利きを消そうとしてしまうので、作り直しとする
@@ -309,6 +299,13 @@ func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *TMoves {
 			moves.AddAll(m)
 			m, _ = ban.Create1MoveAndKiki(koma, move_sw)
 			moves.AddAll(m)
+		default:
+			// と、杏、圭、全
+			deltas := move_to_map[Kin]
+			for _, delta := range deltas {
+				m, _ := ban.Create1MoveAndKiki(koma, delta)
+				moves.AddAll(m)
+			}
 		}
 	} else {
 		switch koma.Kind {
@@ -324,6 +321,13 @@ func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *TMoves {
 			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_s))
 			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_e))
 			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_w))
+		default:
+			// 歩、桂、銀、金、玉
+			deltas := move_to_map[koma.Kind]
+			for _, delta := range deltas {
+				m, _ := ban.Create1MoveAndKiki(koma, delta)
+				moves.AddAll(m)
+			}
 		}
 	}
 	return moves
@@ -464,12 +468,7 @@ func (ban TBan) DoUpdateMoves(teban TTeban) {
 	teban_koma := ban.GetTebanKoma(teban)
 	for _, koma := range *teban_koma {
 		if koma.Kind == Gyoku {
-			// TODO 同じロジックを使えるようになったはず。
-			// 駒から、その駒の機械的な利き先を取得する
-			all_moves := koma.GetAllMoves()
-			// 機械的な利き先のうち自陣営の駒がいるマスを除き、有効な指し手となるマスを保存する
-			ban.CheckMovesAndKiki(koma, all_moves)
-			ban.AllMoves[koma.Id] = all_moves.DeleteInvalidMoves()
+			ban.AllMoves[koma.Id] = ban.CreateFarMovesAndKiki(koma)
 			logger := GetLogger()
 			logger.Trace("DoUpdateMoves is sente: " + s(teban))
 			break
@@ -667,7 +666,7 @@ func (ban TBan) RefreshMovesAndKiki(masu *TMasu, kiki_teban TTeban, removed_koma
 				}
 			} else {
 				// どいた駒が敵陣営の場合、手は元々あるので、追加する必要はないが、その駒を取れなくなる。
-				for _,move := range ban.AllMoves[kiki_koma_id].Map {
+				for _, move := range ban.AllMoves[kiki_koma_id].Map {
 					if move.ToPosition == masu.Position {
 						move.ToId = 0
 					}
