@@ -201,16 +201,36 @@ func (koma TKoma) CreateMovesFromDelta(delta TPosition) []*TMove {
 		to_pos = koma.Position - delta
 	}
 	if to_pos.IsValidMove() {
-		m := NewMove(koma.Id, koma.Position, to_pos, 0)
-		slice = append(slice, m)
-		if !koma.Promoted {
-			can_promote, promote_move := m.CanPromote(koma.IsSente)
-			if can_promote {
-				slice = append(slice, promote_move)
+		AddNewMoves2Slice(&slice, &koma, to_pos, 0)
+	}
+	return slice
+}
+
+func (koma TKoma) CanMove(to_pos TPosition) bool {
+	to_y := imag(to_pos)
+	var can_move bool = true
+	if koma.IsSente {
+		if (koma.Kind == Fu) || (koma.Kind == Kyo) {
+			if to_y == 1 {
+				can_move = false
+			}
+		} else if koma.Kind == Kei {
+			if to_y <= 2 {
+				can_move = false
+			}
+		}
+	} else {
+		if (koma.Kind == Fu) || (koma.Kind == Kyo) {
+			if to_y == 9 {
+				can_move = false
+			}
+		} else if koma.Kind == Kei {
+			if to_y >= 8 {
+				can_move = false
 			}
 		}
 	}
-	return slice
+	return can_move
 }
 
 func (position TPosition) IsValidMove() bool {

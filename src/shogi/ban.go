@@ -200,6 +200,8 @@ func (ban TBan) PutAllKoma() {
 
 // 駒を配置し、合法手、利きマスデータを更新する
 func (ban TBan) PutKoma(koma *TKoma) {
+	logger := GetLogger()
+	logger.Trace("PutKoma id: " + s(koma.Id))
 	// 駒が持っている位置を更新
 	ban.AllKoma[koma.Id] = koma
 
@@ -222,6 +224,8 @@ func (ban TBan) PutKoma(koma *TKoma) {
 }
 
 func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
+	logger := GetLogger()
+	logger.Trace("DeleteCloseMovesAndKiki id: " + s(koma.Id) + ", sente?: " + s(is_sente))
 	kiki_map := ban.AllMasu[koma.Position].GetKiki(is_sente)
 	if len(*kiki_map) > 0 {
 		for koma_id, _ := range *kiki_map {
@@ -244,14 +248,7 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 					}
 					if !saved {
 						// もともと自陣営の駒に利かせていたところ、その駒を取られた場合はmoveが存在していない。
-						m := NewMove(target_koma.Id, target_koma.Position, koma.Position, koma.Id)
-						ban.AllMoves[koma_id].Add(m)
-						if !target_koma.Promoted {
-							can_promote, promote_move := m.CanPromote(target_koma.IsSente)
-							if can_promote {
-								ban.AllMoves[koma_id].Add(promote_move)
-							}
-						}
+						ban.AddNewMoves(target_koma, koma.Position, koma.Id)
 					}
 				} else {
 					// komaが自陣営なら、komaの位置への手は合法でなくなるので削除が必要。
@@ -268,8 +265,44 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 	}
 }
 
-// 香、角、飛の、全方向の手と利きを生成する。
+func (ban TBan) AddNewMoves(from_koma *TKoma, to_pos TPosition, to_id TKomaId) {
+	move := NewMove(from_koma.Id, from_koma.Position, to_pos, to_id)
+	if !from_koma.Promoted {
+		// 成っていない駒が成れる場合は成る手を追加
+		can_promote, promote_move := move.CanPromote(from_koma.IsSente)
+		if can_promote {
+			ban.AllMoves[from_koma.Id].Add(promote_move)
+		}
+		// 行き場のない手でなければ追加
+		if from_koma.CanMove(to_pos) {
+			ban.AllMoves[from_koma.Id].Add(move)
+		}
+	} else {
+		ban.AllMoves[from_koma.Id].Add(move)
+	}
+}
+
+func AddNewMoves2Slice(slice *[]*TMove, from_koma *TKoma, to_pos TPosition, to_id TKomaId) {
+	move := NewMove(from_koma.Id, from_koma.Position, to_pos, to_id)
+	if !from_koma.Promoted {
+		// 成っていない駒が成れる場合は成る手を追加
+		can_promote, promote_move := move.CanPromote(from_koma.IsSente)
+		if can_promote {
+			*slice = append(*slice, promote_move)
+		}
+		// 行き場のない手でなければ追加
+		if from_koma.CanMove(to_pos) {
+			*slice = append(*slice, move)
+		}
+	} else {
+		*slice = append(*slice, move)
+	}
+}
+
+// 手と利きを生成する。
 func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *TMoves {
+	logger := GetLogger()
+	logger.Trace("CreateFarMovesAndKiki id: " + s(koma.Id))
 	moves := NewMoves()
 	if koma.Promoted {
 		switch koma.Kind {
@@ -333,7 +366,7 @@ func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *TMoves {
 	return moves
 }
 
-// 馬、龍の、成ってできた1マス分だけの手と利きを生成する。処理的にはNと同じ。
+// 馬、龍の、成ってできた1マス分だけの手と利きを生成する。
 func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition) ([]*TMove, bool) {
 	slice := make([]*TMove, 0)
 	var to_pos TPosition
@@ -356,26 +389,12 @@ func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition) ([]*TMove, bool
 				return slice, false
 			} else {
 				// 相手の駒は取れる。その先には動けない
-				m := NewMove(koma.Id, koma.Position, to_pos, target_koma.Id)
-				slice = append(slice, m)
-				if !koma.Promoted {
-					can_promote, promote_move := m.CanPromote(koma.IsSente)
-					if can_promote {
-						slice = append(slice, promote_move)
-					}
-				}
+				AddNewMoves2Slice(&slice, koma, to_pos, target_koma.Id)
 				return slice, false
 			}
 		} else {
 			// 駒がないなら指せる
-			m := NewMove(koma.Id, koma.Position, to_pos, 0)
-			slice = append(slice, m)
-			if !koma.Promoted {
-				can_promote, promote_move := m.CanPromote(koma.IsSente)
-				if can_promote {
-					slice = append(slice, promote_move)
-				}
-			}
+			AddNewMoves2Slice(&slice, koma, to_pos, 0)
 			return slice, true
 		}
 	}
@@ -396,26 +415,6 @@ func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta TPosition) []*TMove {
 		}
 	}
 	return slice
-}
-
-// 駒の合法手と利き先マスをチェックする（香、角、飛を除く）
-func (ban TBan) CheckMovesAndKiki(koma *TKoma, moves *TMoves) {
-	for _, move := range moves.Map {
-		temp_pos := move.ToPosition
-		// 利き先マスに、自駒のIdを保存する
-		kiki_masu := ban.AllMasu[temp_pos]
-		kiki_masu.SaveKiki(koma.Id, koma.IsSente)
-		target_id := kiki_masu.KomaId
-		if target_id != 0 {
-			if ban.AllKoma[target_id].IsSente == koma.IsSente {
-				// 自陣営の駒がいるマスには指せない
-				move.IsValid = false
-			} else {
-				// 指し手の取る駒
-				move.ToId = target_id
-			}
-		}
-	}
 }
 
 // USI形式のmoveを反映させる。
@@ -656,14 +655,7 @@ func (ban TBan) RefreshMovesAndKiki(masu *TMasu, kiki_teban TTeban, removed_koma
 		} else {
 			if kiki_teban == removed_koma_teban {
 				// 利きを元に、どいたマスへの手を追加する
-				m := NewMove(kiki_koma_id, kiki_koma.Position, masu.Position, 0)
-				ban.AllMoves[kiki_koma_id].Add(m)
-				if !kiki_koma.Promoted {
-					can_promote, promote_move := m.CanPromote(kiki_koma.IsSente)
-					if can_promote {
-						ban.AllMoves[kiki_koma_id].Add(promote_move)
-					}
-				}
+				ban.AddNewMoves(kiki_koma, masu.Position, 0)
 			} else {
 				// どいた駒が敵陣営の場合、手は元々あるので、追加する必要はないが、その駒を取れなくなる。
 				for _, move := range ban.AllMoves[kiki_koma_id].Map {

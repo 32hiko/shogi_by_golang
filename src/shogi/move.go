@@ -24,6 +24,8 @@ func (moves TMoves) Add(move *TMove) {
 }
 
 func (moves TMoves) AddAll(slice []*TMove) {
+	// logger := GetLogger()
+	// logger.Trace("AddAll: " + s(len(slice)))
 	for _, v := range slice {
 		if v != nil {
 			moves.Add(v)
