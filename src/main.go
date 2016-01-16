@@ -88,6 +88,12 @@ func main() {
 				bestmove := player.Search(master)
 				if len(bestmove) < 6 {
 					master.ApplyMove(bestmove)
+					if s.Index(bestmove, "*") == 1 {
+						// 打つ手は、先後問わず駒の種類を大文字で返す仕様。
+						from := bestmove[0:2]
+						to := bestmove[2:]
+						bestmove = s.ToUpper(from) + to
+					}
 					logger.Trace(master.Display())
 					tesuu++
 				}

@@ -1,6 +1,8 @@
 package shogi
 
-import ()
+import (
+	"strings"
+)
 
 type TKomaId byte
 type TKind byte
@@ -50,6 +52,16 @@ var promoted_disp_map = map[TKind]string{
 	Gin:  "全",
 	Kaku: "馬",
 	Hi:   "龍",
+}
+
+var usi_drop_map = map[TKind]string{
+	Fu:   "P",
+	Kyo:  "L",
+	Kei:  "N",
+	Gin:  "S",
+	Kin:  "G",
+	Kaku: "B",
+	Hi:   "R",
 }
 
 // 将棋だけど東西南北で。直接画面には出ないし。
@@ -231,6 +243,14 @@ func (koma TKoma) CanMove(to_pos TPosition) bool {
 		}
 	}
 	return can_move
+}
+
+func (koma TKoma) GetUSIDropString() string {
+	k := usi_drop_map[koma.Kind]
+	if !koma.IsSente {
+		k = strings.ToLower(k)
+	}
+	return k + "*"
 }
 
 func (position TPosition) IsValidMove() bool {

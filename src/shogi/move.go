@@ -47,6 +47,7 @@ func (moves TMoves) DeleteInvalidMoves() *TMoves {
 }
 
 type TMove struct {
+	Koma         *TKoma
 	FromId       TKomaId
 	FromPosition TPosition
 	ToPosition   TPosition
@@ -55,10 +56,11 @@ type TMove struct {
 	Promote      bool
 }
 
-func NewMove(from_id TKomaId, from_position TPosition, to_position TPosition, to_id TKomaId) *TMove {
+func NewMove(koma *TKoma, to_position TPosition, to_id TKomaId) *TMove {
 	move := TMove{
-		FromId:       from_id,
-		FromPosition: from_position,
+		Koma:         koma,
+		FromId:       koma.Id,
+		FromPosition: koma.Position,
 		ToPosition:   to_position,
 		ToId:         to_id,
 		IsValid:      true,
@@ -68,6 +70,9 @@ func NewMove(from_id TKomaId, from_position TPosition, to_position TPosition, to
 }
 
 func (move TMove) CanPromote(teban TTeban) (bool, *TMove) {
+	if move.Koma.Kind == Gyoku {
+		return false, nil
+	}
 	from_y := imag(move.FromPosition)
 	to_y := imag(move.ToPosition)
 	var can_promote bool = false
@@ -82,21 +87,26 @@ func (move TMove) CanPromote(teban TTeban) (bool, *TMove) {
 		}
 	}
 	if can_promote {
-		promote_move = NewMove(move.FromId, move.FromPosition, move.ToPosition, move.ToId)
+		promote_move = NewMove(move.Koma, move.ToPosition, move.ToId)
 		promote_move.Promote = true
 	}
 	return can_promote, promote_move
 }
 
 func (move TMove) GetUSIMoveString() string {
-	// TODO 打つ手（fromが0,0の場合）に対応する。
 	from := move.FromPosition
 	to := move.ToPosition
-	return_str := position2str(from) + position2str(to)
-	if move.Promote {
-		return_str += "+"
+	// 打つ手（fromが0,0の場合）に対応する。
+	if from == Mochigoma {
+		return_str := move.Koma.GetUSIDropString() + position2str(to)
+		return return_str
+	} else {
+		return_str := position2str(from) + position2str(to)
+		if move.Promote {
+			return_str += "+"
+		}
+		return return_str
 	}
-	return return_str
 }
 
 func (move TMove) Display() string {

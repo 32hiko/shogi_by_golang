@@ -2,8 +2,8 @@ package shogi
 
 import (
 	. "logger"
-	"time"
 	"math/rand"
+	"time"
 )
 
 type IPlayer interface {
@@ -63,14 +63,14 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 	// logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " +s(teban))
 	tegoma := ban.GetTebanKoma(teban)
 	all_moves := make(map[byte]*TMove)
-	// いったんは打つ手を考えない
-	for koma_id, koma := range *tegoma {
+
+	for koma_id, _ := range *tegoma {
 		// logger.Trace("[RandomPlayer] koma_id: " + s(koma_id))
-		if koma.Position != Mochigoma {
-			for _, move := range ban.AllMoves[koma_id].Map {
-				AddMove(&all_moves, move)
-			}
+
+		for _, move := range ban.AllMoves[koma_id].Map {
+			AddMove(&all_moves, move)
 		}
+
 	}
 	moves_count := len(all_moves)
 	logger.Trace("[RandomPlayer] moves: " + s(moves_count))

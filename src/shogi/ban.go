@@ -12,12 +12,15 @@ var p = fmt.Println
 var s = fmt.Sprint
 
 type TBan struct {
-	AllMasu   map[TPosition]*TMasu
-	AllKoma   map[TKomaId]*TKoma
-	AllMoves  map[TKomaId]*TMoves
-	SenteKoma map[TKomaId]*TKoma
-	GoteKoma  map[TKomaId]*TKoma
-	Tesuu     *int
+	AllMasu     map[TPosition]*TMasu
+	AllKoma     map[TKomaId]*TKoma
+	AllMoves    map[TKomaId]*TMoves
+	SenteKoma   map[TKomaId]*TKoma
+	GoteKoma    map[TKomaId]*TKoma
+	Tesuu       *int
+	EmptyMasu   []TPosition
+	FuDropSente []byte
+	FuDropGote  []byte
 }
 
 func NewBan() *TBan {
@@ -106,6 +109,14 @@ func (ban TBan) GetTebanKoma(teban TTeban) *(map[TKomaId]*TKoma) {
 		return &(ban.SenteKoma)
 	} else {
 		return &(ban.GoteKoma)
+	}
+}
+
+func (ban TBan) GetFuDrop(teban TTeban) []byte {
+	if teban {
+		return ban.FuDropSente
+	} else {
+		return ban.FuDropGote
 	}
 }
 
@@ -255,7 +266,7 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 					for _, move := range ban.AllMoves[koma_id].Map {
 						if move.ToPosition == koma.Position {
 							move.IsValid = false
-							break
+							// 成らず、成る手両方を削除する必要があるのでbreakできない
 						}
 					}
 				}
@@ -266,7 +277,7 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 }
 
 func (ban TBan) AddNewMoves(from_koma *TKoma, to_pos TPosition, to_id TKomaId) {
-	move := NewMove(from_koma.Id, from_koma.Position, to_pos, to_id)
+	move := NewMove(from_koma, to_pos, to_id)
 	if !from_koma.Promoted {
 		// 成っていない駒が成れる場合は成る手を追加
 		can_promote, promote_move := move.CanPromote(from_koma.IsSente)
@@ -283,7 +294,7 @@ func (ban TBan) AddNewMoves(from_koma *TKoma, to_pos TPosition, to_id TKomaId) {
 }
 
 func AddNewMoves2Slice(slice *[]*TMove, from_koma *TKoma, to_pos TPosition, to_id TKomaId) {
-	move := NewMove(from_koma.Id, from_koma.Position, to_pos, to_id)
+	move := NewMove(from_koma, to_pos, to_id)
 	if !from_koma.Promoted {
 		// 成っていない駒が成れる場合は成る手を追加
 		can_promote, promote_move := move.CanPromote(from_koma.IsSente)
@@ -366,7 +377,7 @@ func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *TMoves {
 	return moves
 }
 
-// 馬、龍の、成ってできた1マス分だけの手と利きを生成する。
+// 1マス分だけの手と利きを生成する。
 func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition) ([]*TMove, bool) {
 	slice := make([]*TMove, 0)
 	var to_pos TPosition
@@ -452,18 +463,118 @@ func (ban TBan) ApplyMove(usi_move string) {
 		ban.DoDrop(teban, kind, to)
 	}
 
-	ban.UpdateMoves()
+	ban.CheckEmptyMasu()
+	ban.CreateAllMochigomaMoves()
+	ban.UpdateGyokuMoves()
 	ban.DeleteSuicideMoves()
 	*(ban.Tesuu) += 1
 }
 
-func (ban TBan) UpdateMoves() {
-	// 両陣営の玉について、手を生成し直す（次のロジックによる削除が、自動では復元されないので）
-	ban.DoUpdateMoves(Sente)
-	ban.DoUpdateMoves(Gote)
+func (ban *TBan) CheckEmptyMasu() {
+	logger := GetLogger()
+	empty_masu := make([]TPosition, 51)
+	fu_drop_sente := make([]byte, 0)
+	fu_drop_gote := make([]byte, 0)
+	var x, y byte = 1, 1
+	for x <= 9 {
+		fu_sente := false
+		fu_gote := false
+		y = 1
+		for y <= 9 {
+			pos := Bytes2TPosition(x, y)
+			// logger.Trace("CheckEmptyMasu pos: " + s(pos))
+			masu := ban.AllMasu[pos]
+			if masu.KomaId == 0 {
+				// 空いたマスを保存
+				empty_masu = append(empty_masu, pos)
+			} else {
+				koma := ban.AllKoma[masu.KomaId]
+				if koma.Position != pos {
+					// ありえないが、バグとしてありえるので予め
+					logger.Trace("CheckEmptyMasu Ghost Koma Id: " + s(koma.Id))
+					masu.KomaId = 0
+					empty_masu = append(empty_masu, pos)
+				} else {
+					// その列の歩の有無をチェック
+					if koma.Kind == Fu {
+						if koma.IsSente {
+							fu_sente = true
+						} else {
+							fu_gote = true
+						}
+					}
+				}
+			}
+			y++
+		}
+		if !fu_sente {
+			fu_drop_sente = append(fu_drop_sente, x)
+		}
+		if !fu_gote {
+			fu_drop_gote = append(fu_drop_gote, x)
+		}
+		x++
+	}
+	// 独自のstructに値を保存するには、レシーバをアドレス表記にする必要がある。
+	ban.EmptyMasu = empty_masu
+	ban.FuDropSente = fu_drop_sente
+	ban.FuDropGote = fu_drop_gote
+	logger.Trace("CheckEmptyMasu ok: " + s(empty_masu))
 }
 
-func (ban TBan) DoUpdateMoves(teban TTeban) {
+func (ban TBan) CreateAllMochigomaMoves() {
+	ban.DoCreateAllMochigomaMoves(Sente)
+	ban.DoCreateAllMochigomaMoves(Gote)
+}
+
+func (ban TBan) DoCreateAllMochigomaMoves(teban TTeban) {
+	teban_koma := ban.GetTebanKoma(teban)
+	for _, koma := range *teban_koma {
+		// 駒の種類ごとにキャッシュしたほうがいいとかは当然あるが。単純に生成できるようにする。
+		if koma.Position == Mochigoma {
+			ban.AllMoves[koma.Id] = ban.CreateMochigomaMoves(koma)
+		}
+	}
+}
+
+func (ban TBan) CreateMochigomaMoves(koma *TKoma) *TMoves {
+	logger := GetLogger()
+	moves := NewMoves()
+	// 空いているマスを探す
+	// logger.Trace("CreateMochigomaMoves id: " + s(koma.Id) + ", empty_masu: " + s(ban.EmptyMasu))
+	logger.Trace("CreateMochigomaMoves id: " + s(koma.Id))
+	for _, pos := range ban.EmptyMasu {
+		if koma.CanMove(pos) {
+			// 歩、香、桂の場合、行き場のないマスには打てない
+			if koma.Kind == Fu {
+				// 歩の場合、二歩は禁止
+				fu_drop := ban.GetFuDrop(koma.IsSente)
+				to_x := byte(real(pos))
+				ok := false
+				for _, x := range fu_drop {
+					if to_x == x {
+						ok = true
+						break
+					}
+				}
+				if !ok {
+					continue
+				}
+				// TODO: 歩の場合、打ち歩詰めは禁止
+			}
+			moves.Add(NewMove(koma, pos, 0))
+		}
+	}
+	return moves
+}
+
+func (ban TBan) UpdateGyokuMoves() {
+	// 両陣営の玉について、手を生成し直す（次のロジックによる削除が、自動では復元されないので）
+	ban.DoUpdateGyokuMoves(Sente)
+	ban.DoUpdateGyokuMoves(Gote)
+}
+
+func (ban TBan) DoUpdateGyokuMoves(teban TTeban) {
 	teban_koma := ban.GetTebanKoma(teban)
 	for _, koma := range *teban_koma {
 		if koma.Kind == Gyoku {
