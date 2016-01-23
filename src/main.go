@@ -66,7 +66,6 @@ func main() {
 			// TODO: 対局待ち状態に戻る。
 		default:
 			if s.HasPrefix(text, "position") {
-				// TODO: 盤面を更新する
 				split_text := s.Split(text, " ")
 				// position startpos moves 7g7f 8b7b 2g2f
 				// とりあえずは初期配置は通常で。
