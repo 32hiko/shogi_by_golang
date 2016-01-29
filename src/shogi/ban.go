@@ -50,6 +50,32 @@ func NewBan() *TBan {
 	}
 	return &ban
 }
+func FromSFEN(sfen string) *TBan {
+	// 例：lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1
+	// -は両者持ち駒がない場合。ある場合は、S2Pb3pのように表記。（先手銀1歩2、後手角1歩3）最後の数字は手数。
+	split_str := strings.Split(sfen, " ")
+
+	// 盤面
+	ban_str := strings.Split(split_str[0], "/")
+	ban := NewBan()
+	// TODO: 左上から順に駒を配置していき、そのbanを返す。
+
+	// 手番
+	teban := TTeban(strings.Index("bw", split_str[1]) == 0)
+
+	// 持ち駒
+	// TODO: 持ち駒はkey-valueの形式で持つようにする。
+	mochigoma_str := split_str[2]
+
+	// 手数
+	tesuu, _ := strconv.Atoi(split_str[3])
+
+	p("ban_str: " + s(ban_str))
+	p("teban: " + s(teban))
+	p("mochigoma_str: " + s(mochigoma_str))
+	p("tesuu: " + s(tesuu))
+	return ban
+}
 
 // 駒が持つデータ、マスが持つデータは今後も検討要
 type TMasu struct {

@@ -94,6 +94,17 @@ func (kind TKind) toString(promoted bool) string {
 	}
 }
 
+type TMochigoma struct {
+	Map map[TKind]int
+}
+
+func NewMochigoma() *TMochigoma {
+	mochigoma := TMochigoma{
+		Map: make(map[TKind]int),
+	}
+	return &mochigoma
+}
+
 type TKoma struct {
 	Id       TKomaId
 	Kind     TKind
