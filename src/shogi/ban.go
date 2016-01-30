@@ -56,8 +56,8 @@ func FromSFEN(sfen string) *TBan {
 	split_str := strings.Split(sfen, " ")
 
 	// 盤面
-	ban_str := strings.Split(split_str[0], "/")
 	ban := NewBan()
+	ban.PutSFENKoma(split_str[0])
 	// TODO: 左上から順に駒を配置していき、そのbanを返す。
 
 	// 手番
@@ -70,7 +70,6 @@ func FromSFEN(sfen string) *TBan {
 	// 手数
 	tesuu, _ := strconv.Atoi(split_str[3])
 
-	p("ban_str: " + s(ban_str))
 	p("teban: " + s(teban))
 	p("mochigoma_str: " + s(mochigoma_str))
 	p("tesuu: " + s(tesuu))
@@ -235,10 +234,37 @@ func (ban TBan) PutAllKoma() {
 	}
 }
 
+func (ban TBan) PutSFENKoma(sfen string) {
+	arr := strings.Split(sfen, "/")
+	var y byte = 1
+	var x byte = 9
+	var koma_id TKomaId = 1
+	for _, line := range arr {
+		x = 9
+		// 1文字ずつチェックする。
+		for i := 0; i < len(line); i++ {
+			char := line[i : i+1]
+			// まず数字かどうか
+			num := strings.Index("0123456789", char)
+			if num == -1 {
+				// 数字ではないので駒が存在するマス。
+				kind, teban := str2KindAndTeban(char)
+				ban.PutKoma(NewKoma(koma_id, kind, x, y, teban))
+				koma_id++
+				x--
+			} else {
+				// 空きマス分飛ばす
+				x -= byte(num)
+			}
+		}
+		y++
+	}
+}
+
 // 駒を配置し、合法手、利きマスデータを更新する
 func (ban TBan) PutKoma(koma *TKoma) {
-	logger := GetLogger()
-	logger.Trace("PutKoma id: " + s(koma.Id))
+	//logger := GetLogger()
+	//logger.Trace("PutKoma id: " + s(koma.Id))
 	// 駒が持っている位置を更新
 	ban.AllKoma[koma.Id] = koma
 
@@ -261,8 +287,8 @@ func (ban TBan) PutKoma(koma *TKoma) {
 }
 
 func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
-	logger := GetLogger()
-	logger.Trace("DeleteCloseMovesAndKiki id: " + s(koma.Id) + ", sente?: " + s(is_sente))
+	// logger := GetLogger()
+	// logger.Trace("DeleteCloseMovesAndKiki id: " + s(koma.Id) + ", sente?: " + s(is_sente))
 	kiki_map := ban.AllMasu[koma.Position].GetKiki(is_sente)
 	if len(*kiki_map) > 0 {
 		for koma_id, _ := range *kiki_map {
@@ -338,8 +364,8 @@ func AddNewMoves2Slice(slice *[]*TMove, from_koma *TKoma, to_pos TPosition, to_i
 
 // 手と利きを生成する。
 func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *TMoves {
-	logger := GetLogger()
-	logger.Trace("CreateFarMovesAndKiki id: " + s(koma.Id))
+	// logger := GetLogger()
+	// logger.Trace("CreateFarMovesAndKiki id: " + s(koma.Id))
 	moves := NewMoves()
 	if koma.Promoted {
 		switch koma.Kind {
@@ -649,24 +675,26 @@ func str2Position(str string) TPosition {
 // S* -> 銀、先手
 func str2KindAndTeban(str string) (TKind, TTeban) {
 	char := str[0:1]
-	index := strings.Index("PLNSGBRplnsgbr", char)
-	teban := TTeban(index < 7)
+	index := strings.Index("PLNSGBRKplnsgbrk", char)
+	teban := TTeban(index < 8)
 	var kind TKind
 	switch index {
-	case 0, 7:
+	case 0, 8:
 		kind = Fu
-	case 1, 8:
+	case 1, 9:
 		kind = Kyo
-	case 2, 9:
+	case 2, 10:
 		kind = Kei
-	case 3, 10:
+	case 3, 11:
 		kind = Gin
-	case 4, 11:
+	case 4, 12:
 		kind = Kin
-	case 5, 12:
+	case 5, 13:
 		kind = Kaku
-	case 6, 13:
+	case 6, 14:
 		kind = Hi
+	case 7, 15:
+		kind = Gyoku
 	}
 	return kind, teban
 }

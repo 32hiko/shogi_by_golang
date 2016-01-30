@@ -1,7 +1,7 @@
 package shogi
 
 import (
-	. "logger"
+// . "logger"
 )
 
 type TMoves struct {
@@ -34,13 +34,13 @@ func (moves TMoves) AddAll(slice []*TMove) {
 }
 
 func (moves TMoves) DeleteInvalidMoves() *TMoves {
-	logger := GetLogger()
+	// logger := GetLogger()
 	deleted := NewMoves()
 	for _, move := range moves.Map {
 		if move.IsValid {
 			deleted.Add(move)
 		} else {
-			logger.Trace("DeleteInvalidMoves[" + move.Display() + "]")
+			// logger.Trace("DeleteInvalidMoves[" + move.Display() + "]")
 		}
 	}
 	return deleted
