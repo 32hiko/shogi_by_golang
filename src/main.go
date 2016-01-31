@@ -10,9 +10,9 @@ import (
 )
 
 // const
-const PROGRAM_NAME = "shogi01"
+const PROGRAM_NAME = "HoneyWaffle"
 const PROGRAM_VERSION = "0.0.1"
-const AUTHOR = "32hiko"
+const AUTHOR = "Mitsuhiko Watanabe"
 
 // alias
 var p = fmt.Println
@@ -67,22 +67,55 @@ func main() {
 		default:
 			if s.HasPrefix(text, "position") {
 				split_text := s.Split(text, " ")
+				// 通常の対局
 				// position startpos moves 7g7f 8b7b 2g2f
-				// とりあえずは初期配置は通常で。
-				for index, value := range split_text {
-					if index < 3 {
-						continue
+				is_sfen := false
+				if split_text[1] == "sfen" {
+					is_sfen = true
+					// 局面編集からの検討だとこのように
+					// position sfen lnsgkgsnl/1r5b1/1pppppppp/p8/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1 moves 2g2f
+					sfen_index := s.Index(text, "sfen")
+					moves_index := s.Index(text, "moves")
+					var sfen_str string
+					if moves_index == -1 {
+						sfen_str = text[sfen_index:]
+					} else {
+						sfen_str = text[sfen_index : moves_index-1]
 					}
-					// 何度も一手ずつ反映する必要はないので、スキップできるようにする。
-					if index-3 < tesuu {
-						continue
-					}
-					logger.Trace("to apply: " + value)
-					master.ApplyMove(value)
-					logger.Trace(master.Display())
-					tesuu++
+					master = FromSFEN(sfen_str)
 				}
-				resp("info string "+text, logger)
+				if is_sfen {
+					// こちらのルートはどうすればいいのか不明。デッドコピーとしておく。
+					for index, value := range split_text {
+						if index < 7 {
+							continue
+						}
+						// 何度も一手ずつ反映する必要はないので、スキップできるようにする。
+						if index-7 < tesuu {
+							continue
+						}
+						logger.Trace("to apply: " + value)
+						master.ApplyMove(value)
+						logger.Trace(master.Display())
+						tesuu++
+					}
+					resp("info string "+text, logger)
+				} else {
+					for index, value := range split_text {
+						if index < 3 {
+							continue
+						}
+						// 何度も一手ずつ反映する必要はないので、スキップできるようにする。
+						if index-3 < tesuu {
+							continue
+						}
+						logger.Trace("to apply: " + value)
+						master.ApplyMove(value)
+						logger.Trace(master.Display())
+						tesuu++
+					}
+					resp("info string "+text, logger)
+				}
 			} else if s.HasPrefix(text, "go") {
 				bestmove := player.Search(master)
 				if len(bestmove) < 6 {
