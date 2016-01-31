@@ -12,15 +12,17 @@ var p = fmt.Println
 var s = fmt.Sprint
 
 type TBan struct {
-	AllMasu     map[TPosition]*TMasu
-	AllKoma     map[TKomaId]*TKoma
-	AllMoves    map[TKomaId]*TMoves
-	SenteKoma   map[TKomaId]*TKoma
-	GoteKoma    map[TKomaId]*TKoma
-	Tesuu       *int
-	EmptyMasu   []TPosition
-	FuDropSente []byte
-	FuDropGote  []byte
+	AllMasu        map[TPosition]*TMasu
+	AllKoma        map[TKomaId]*TKoma
+	AllMoves       map[TKomaId]*TMoves
+	SenteKoma      map[TKomaId]*TKoma
+	GoteKoma       map[TKomaId]*TKoma
+	SenteMochigoma *TMochigoma
+	GoteMochigoma  *TMochigoma
+	Tesuu          *int
+	EmptyMasu      []TPosition
+	FuDropSente    []byte
+	FuDropGote     []byte
 }
 
 func NewBan() *TBan {
@@ -41,12 +43,14 @@ func NewBan() *TBan {
 	var tesuu int = 0
 
 	ban := TBan{
-		AllMasu:   all_masu,
-		AllKoma:   make(map[TKomaId]*TKoma),
-		AllMoves:  make(map[TKomaId]*TMoves),
-		SenteKoma: make(map[TKomaId]*TKoma),
-		GoteKoma:  make(map[TKomaId]*TKoma),
-		Tesuu:     &tesuu,
+		AllMasu:        all_masu,
+		AllKoma:        make(map[TKomaId]*TKoma),
+		AllMoves:       make(map[TKomaId]*TMoves),
+		SenteKoma:      make(map[TKomaId]*TKoma),
+		GoteKoma:       make(map[TKomaId]*TKoma),
+		SenteMochigoma: NewMochigoma(),
+		GoteMochigoma:  NewMochigoma(),
+		Tesuu:          &tesuu,
 	}
 	return &ban
 }
@@ -58,20 +62,19 @@ func FromSFEN(sfen string) *TBan {
 	// 盤面
 	ban := NewBan()
 	ban.PutSFENKoma(split_str[0])
-	// TODO: 左上から順に駒を配置していき、そのbanを返す。
 
 	// 手番
 	teban := TTeban(strings.Index("bw", split_str[1]) == 0)
 
 	// 持ち駒
 	// TODO: 持ち駒はkey-valueの形式で持つようにする。
-	mochigoma_str := split_str[2]
+	ban.SetSFENMochigoma(split_str[2])
 
 	// 手数
+	// TODO: 棋譜出力用に、初期局面からなら手数は出せるようにすべし
 	tesuu, _ := strconv.Atoi(split_str[3])
 
 	p("teban: " + s(teban))
-	p("mochigoma_str: " + s(mochigoma_str))
 	p("tesuu: " + s(tesuu))
 	return ban
 }
@@ -142,6 +145,55 @@ func (ban TBan) GetFuDrop(teban TTeban) []byte {
 		return ban.FuDropSente
 	} else {
 		return ban.FuDropGote
+	}
+}
+
+func (ban TBan) GetMochigoma(teban TTeban) *TMochigoma {
+	if teban {
+		return ban.SenteMochigoma
+	} else {
+		return ban.GoteMochigoma
+	}
+}
+
+func (ban TBan) SetSFENMochigoma(sfen_mochigoma string) {
+	// 1文字ずつチェックする。
+	var count int = 0
+	for i := 0; i < len(sfen_mochigoma); i++ {
+		char := sfen_mochigoma[i : i+1]
+		// まず-かどうか
+		if char == "-" {
+			// 持ち駒なし、明示的に初期化が必要であればここですること
+			return
+		}
+		num := strings.Index("0123456789", char)
+		if num == -1 {
+			// 数字ではないので、その駒を持っている。
+			kind, teban := str2KindAndTeban(char)
+			if count == 0 {
+				count = 1
+			}
+			// 持ち駒表を更新
+			target_mochigoma := *(ban.GetMochigoma(teban))
+			target_mochigoma.Map[kind] = count
+			// 持ち駒を生成
+			for j := 0; j < count; j++ {
+				koma_id := TKomaId(len(ban.AllKoma) + 1)
+				new_mochigoma := NewKoma(koma_id, kind, 0, 0, teban)
+				ban.AllKoma[koma_id] = new_mochigoma
+				taban_koma := *(ban.GetTebanKoma(teban))
+				taban_koma[koma_id] = new_mochigoma
+			}
+			count = 0
+		} else {
+			// 次の文字が駒であることが確定。枚数を取得して次の文字をチェックする
+			if count != 0 {
+				// まずないはずだが、歩を10枚以上持っている場合。
+				count = count*10 + num
+			} else {
+				count = num
+			}
+		}
 	}
 }
 
@@ -890,9 +942,9 @@ func (ban TBan) Display() string {
 	var str string = ""
 	// display ban
 	str += "後手の持ち駒："
-	for _, koma := range ban.GoteKoma {
-		if koma.Position == Mochigoma {
-			str += disp_map[koma.Kind] + ", "
+	for kind, count := range ban.GoteMochigoma.Map {
+		if count != 0 {
+			str += disp_map[kind] + s(count) + ", "
 		}
 	}
 	str += "\n"
@@ -913,9 +965,9 @@ func (ban TBan) Display() string {
 		y++
 	}
 	str += "先手の持ち駒："
-	for _, koma := range ban.SenteKoma {
-		if koma.Position == Mochigoma {
-			str += disp_map[koma.Kind] + ", "
+	for kind, count := range ban.SenteMochigoma.Map {
+		if count != 0 {
+			str += disp_map[kind] + s(count) + ", "
 		}
 	}
 	str += "\n"
