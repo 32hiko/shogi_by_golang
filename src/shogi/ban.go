@@ -836,6 +836,12 @@ func (ban TBan) CaptureKoma(koma_id TKomaId) {
 	target_masu.KomaId = 0
 	// 駒の場所を持ち駒とする
 	target_koma.Position = Mochigoma
+	mm := *(ban.GetMochigoma(!(target_koma.IsSente)))
+	if mm.Map[target_koma.Kind] == 0 {
+		mm.Map[target_koma.Kind] = 1
+	} else {
+		mm.Map[target_koma.Kind] += 1
+	}
 
 	// 成りフラグをoff
 	target_koma.Promoted = false
@@ -905,6 +911,14 @@ func (ban TBan) DoDrop(teban TTeban, kind TKind, to TPosition) {
 	}
 	// 打つ駒に座標を設定する
 	koma.Position = to
+
+	mm := *(ban.GetMochigoma(teban))
+	if mm.Map[koma.Kind] == 0 {
+		// ありえないが、ガードしておく。
+		mm.Map[koma.Kind] = 0
+	} else {
+		mm.Map[koma.Kind] -= 1
+	}
 	// 駒を配置する
 	ban.PutKoma(koma)
 }
