@@ -19,6 +19,7 @@ type TBan struct {
 	GoteKoma       map[TKomaId]*TKoma
 	SenteMochigoma *TMochigoma
 	GoteMochigoma  *TMochigoma
+	Teban          *TTeban
 	Tesuu          *int
 	EmptyMasu      []TPosition
 	FuDropSente    []byte
@@ -40,7 +41,8 @@ func NewBan() *TBan {
 	}
 	// 持ち駒用
 	all_masu[Mochigoma] = NewMasu(Mochigoma, 0)
-	var tesuu int = 0
+	tesuu := 0
+	teban := Sente
 
 	ban := TBan{
 		AllMasu:        all_masu,
@@ -50,6 +52,7 @@ func NewBan() *TBan {
 		GoteKoma:       make(map[TKomaId]*TKoma),
 		SenteMochigoma: NewMochigoma(),
 		GoteMochigoma:  NewMochigoma(),
+		Teban:          &teban,
 		Tesuu:          &tesuu,
 	}
 	return &ban
@@ -65,14 +68,14 @@ func FromSFEN(sfen string) *TBan {
 
 	// 手番
 	teban := TTeban(strings.Index("bw", split_str[1]) == 0)
+	*(ban.Teban) = teban
 
 	// 持ち駒
-	// TODO: 持ち駒はkey-valueの形式で持つようにする。
 	ban.SetSFENMochigoma(split_str[2])
 
 	// 手数
-	// TODO: 棋譜出力用に、初期局面からなら手数は出せるようにすべし
 	tesuu, _ := strconv.Atoi(split_str[3])
+	*(ban.Tesuu) = tesuu
 
 	p("teban: " + s(teban))
 	p("tesuu: " + s(tesuu))
@@ -572,6 +575,7 @@ func (ban TBan) ApplyMove(usi_move string) {
 	ban.UpdateGyokuMoves()
 	ban.DeleteSuicideMoves()
 	*(ban.Tesuu) += 1
+	*(ban.Teban) = !*(ban.Teban)
 }
 
 func (ban *TBan) CheckEmptyMasu() {
@@ -623,7 +627,7 @@ func (ban *TBan) CheckEmptyMasu() {
 	ban.EmptyMasu = empty_masu
 	ban.FuDropSente = fu_drop_sente
 	ban.FuDropGote = fu_drop_gote
-	logger.Trace("CheckEmptyMasu ok: " + s(empty_masu))
+	// logger.Trace("CheckEmptyMasu ok: " + s(empty_masu))
 }
 
 func (ban TBan) CreateAllMochigomaMoves() {
@@ -836,7 +840,7 @@ func (ban TBan) CaptureKoma(koma_id TKomaId) {
 	target_masu.KomaId = 0
 	// 駒の場所を持ち駒とする
 	target_koma.Position = Mochigoma
-	mm := *(ban.GetMochigoma(!(target_koma.IsSente)))
+	mm := *(ban.GetMochigoma((target_koma.IsSente)))
 	if mm.Map[target_koma.Kind] == 0 {
 		mm.Map[target_koma.Kind] = 1
 	} else {

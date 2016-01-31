@@ -59,7 +59,7 @@ func NewRandomPlayer() *TRandomPlayer {
 
 func (player TRandomPlayer) Search(ban *TBan) string {
 	logger := GetLogger()
-	teban := TTeban(*(ban.Tesuu)%2 == 0)
+	teban := *(ban.Teban)
 	// logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " +s(teban))
 	tegoma := ban.GetTebanKoma(teban)
 	all_moves := make(map[byte]*TMove)
