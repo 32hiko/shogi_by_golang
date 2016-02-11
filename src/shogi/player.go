@@ -84,6 +84,7 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 		for _, move := range ban.AllMoves[gyoku_id].Map {
 			AddMove(&all_moves, move)
 		}
+		// 逃げる手がないと現状即投了してしまう。TODO: 王手かけてる駒を取るか、合い駒するか
 	} else {
 		// 今までどおりランダム
 		for koma_id, _ := range *tegoma {

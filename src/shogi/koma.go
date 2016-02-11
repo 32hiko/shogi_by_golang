@@ -269,3 +269,21 @@ func (position TPosition) IsValidMove() bool {
 	y := imag(position)
 	return (0 < x) && (x < 10) && (0 < y) && (y < 10)
 }
+
+func (position TPosition) Vector() TPosition {
+	x := real(position)
+	y := imag(position)
+	if x > 0 {
+		x = 1
+	}
+	if x < 0 {
+		x = -1
+	}
+	if y > 0 {
+		y = 1
+	}
+	if y < 0 {
+		y = -1
+	}
+	return TPosition(complex(x, y))
+}

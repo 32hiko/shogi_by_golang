@@ -429,32 +429,32 @@ func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *TMoves {
 			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_se))
 			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_nw))
 			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_sw))
-			m, _ := ban.Create1MoveAndKiki(koma, move_n)
+			m, _ := ban.Create1MoveAndKiki(koma, move_n, false)
 			moves.AddAll(m)
-			m, _ = ban.Create1MoveAndKiki(koma, move_s)
+			m, _ = ban.Create1MoveAndKiki(koma, move_s, false)
 			moves.AddAll(m)
-			m, _ = ban.Create1MoveAndKiki(koma, move_e)
+			m, _ = ban.Create1MoveAndKiki(koma, move_e, false)
 			moves.AddAll(m)
-			m, _ = ban.Create1MoveAndKiki(koma, move_w)
+			m, _ = ban.Create1MoveAndKiki(koma, move_w, false)
 			moves.AddAll(m)
 		case Hi:
 			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_n))
 			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_s))
 			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_e))
 			moves.AddAll(ban.CreateNMovesAndKiki(koma, move_w))
-			m, _ := ban.Create1MoveAndKiki(koma, move_ne)
+			m, _ := ban.Create1MoveAndKiki(koma, move_ne, false)
 			moves.AddAll(m)
-			m, _ = ban.Create1MoveAndKiki(koma, move_se)
+			m, _ = ban.Create1MoveAndKiki(koma, move_se, false)
 			moves.AddAll(m)
-			m, _ = ban.Create1MoveAndKiki(koma, move_nw)
+			m, _ = ban.Create1MoveAndKiki(koma, move_nw, false)
 			moves.AddAll(m)
-			m, _ = ban.Create1MoveAndKiki(koma, move_sw)
+			m, _ = ban.Create1MoveAndKiki(koma, move_sw, false)
 			moves.AddAll(m)
 		default:
 			// と、杏、圭、全
 			deltas := move_to_map[Kin]
 			for _, delta := range deltas {
-				m, _ := ban.Create1MoveAndKiki(koma, delta)
+				m, _ := ban.Create1MoveAndKiki(koma, delta, false)
 				moves.AddAll(m)
 			}
 		}
@@ -476,7 +476,7 @@ func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *TMoves {
 			// 歩、桂、銀、金、玉
 			deltas := move_to_map[koma.Kind]
 			for _, delta := range deltas {
-				m, _ := ban.Create1MoveAndKiki(koma, delta)
+				m, _ := ban.Create1MoveAndKiki(koma, delta, false)
 				moves.AddAll(m)
 			}
 		}
@@ -485,7 +485,7 @@ func (ban TBan) CreateFarMovesAndKiki(koma *TKoma) *TMoves {
 }
 
 // 1マス分だけの手と利きを生成する。
-func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition) ([]*TMove, bool) {
+func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition, is_far bool) ([]*TMove, bool) {
 	slice := make([]*TMove, 0)
 	var to_pos TPosition
 	if koma.IsSente {
@@ -508,6 +508,21 @@ func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition) ([]*TMove, bool
 			} else {
 				// 相手の駒は取れる。その先には動けない
 				AddNewMoves2Slice(&slice, koma, to_pos, target_koma.Id)
+				// 王手の場合で遠利きの場合、利きを1マスだけ貫通させてみるテスト
+				if target_koma.Kind == Gyoku && is_far {
+					var saki TPosition
+					if koma.IsSente {
+						saki = to_pos + (delta.Vector())
+					} else {
+						saki = to_pos - (delta.Vector())
+					}
+					if saki.IsValidMove() {
+						saki_masu := ban.AllMasu[saki]
+						saki_masu.SaveKiki(koma.Id, koma.IsSente)
+						logger := GetLogger()
+						logger.Trace("add kiki pos: " + s(saki))
+					}
+				}
 				return slice, false
 			}
 		} else {
@@ -524,7 +539,7 @@ func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta TPosition) []*TMove {
 	slice := make([]*TMove, 0)
 	delta_base := delta
 	for {
-		moves, keep := ban.Create1MoveAndKiki(koma, delta_base)
+		moves, keep := ban.Create1MoveAndKiki(koma, delta_base, true)
 		slice = append(slice, moves...)
 		if keep {
 			delta_base += delta
@@ -715,6 +730,7 @@ func (ban TBan) DoDeleteSuicideMoves(teban TTeban) {
 				kiki := ban.AllMasu[move.ToPosition].GetAiteKiki(teban)
 				if len(*kiki) > 0 {
 					// TODO 当たっている利きが遠利きかどうか確認する処理も必要。
+					// 通常、利きは貫通しないが、玉の場合は貫通するようにしておけば、このロジックでもいいかな？
 					move.IsValid = false
 					logger := GetLogger()
 					logger.Trace("DoDeleteSuicideMoves is sente: " + s(teban))
