@@ -64,27 +64,38 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 	tegoma := ban.GetTebanKoma(teban)
 
 	// 自玉に王手がかかっているかどうかチェックする
-	is_oute := false
+	var oute_kiki *map[TKomaId]string
 	var gyoku_id TKomaId
 	gyoku_map := ban.FindKoma(teban, Gyoku)
 	for _, gyoku := range *gyoku_map {
 		// 1個しかないのにforを使う強引実装
 		gyoku_id = gyoku.Id
 		masu := ban.AllMasu[gyoku.Position]
-		kiki := masu.GetAiteKiki(teban)
-		if len(*kiki) > 0 {
-			is_oute = true
-		}
+		oute_kiki = masu.GetAiteKiki(teban)
 	}
 
 	all_moves := make(map[byte]*TMove)
-	if is_oute {
+	if len(*oute_kiki) > 0 {
 		// 王手を回避しないと
 		// 暫定的に、玉が逃げる手だけのランダムで
 		for _, move := range ban.AllMoves[gyoku_id].Map {
 			AddMove(&all_moves, move)
 		}
 		// 逃げる手がないと現状即投了してしまう。TODO: 王手かけてる駒を取るか、合い駒するか
+		if len(*oute_kiki) == 1 {
+			// 王手かけてる駒を取る手を探す
+			for target_id, _ := range *oute_kiki {
+				// 1個しかないのにforを使う強引実装
+				target_koma := ban.AllKoma[target_id]
+				for koma_id, _ := range *tegoma {
+					for _, move := range ban.AllMoves[koma_id].Map {
+						if move.ToPosition == target_koma.Position {
+							AddMove(&all_moves, move)
+						}
+					}
+				}
+			}
+		}
 	} else {
 		// 今までどおりランダム
 		for koma_id, _ := range *tegoma {
