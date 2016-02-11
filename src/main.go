@@ -90,7 +90,7 @@ func main() {
 						if index < 7 {
 							continue
 						}
-						// 何度も一手ずつ反映する必要はないので、スキップできるようにする。
+						// 何度も一手ずつ反映する必要はないので、スキップしている。
 						if index-7 < tesuu {
 							continue
 						}
@@ -105,7 +105,7 @@ func main() {
 						if index < 3 {
 							continue
 						}
-						// 何度も一手ずつ反映する必要はないので、スキップできるようにする。
+						// 何度も一手ずつ反映する必要はないので、スキップしている。
 						if index-3 < tesuu {
 							continue
 						}

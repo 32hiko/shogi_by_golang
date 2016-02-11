@@ -570,10 +570,17 @@ func (ban TBan) ApplyMove(usi_move string) {
 		ban.DoDrop(teban, kind, to)
 	}
 
+	// 駒を打つ手を生成するために、空いているマスや二歩のチェックをする
 	ban.CheckEmptyMasu()
+	// 打つ手を生成する
 	ban.CreateAllMochigomaMoves()
+
+	// 玉の動きを作成し直す（下の処理で削除されると、上の処理で再作成されるとは限らないので）
 	ban.UpdateGyokuMoves()
+	// 玉の自殺手を削除する
 	ban.DeleteSuicideMoves()
+
+	// 指し手の反映が終わり
 	*(ban.Tesuu) += 1
 	*(ban.Teban) = !*(ban.Teban)
 }
@@ -909,7 +916,7 @@ func (ban TBan) DeleteAllKiki(koma *TKoma) {
 
 func (ban TBan) DoDrop(teban TTeban, kind TKind, to TPosition) {
 	// 打つ駒を特定する
-	koma := ban.FindKoma(teban, kind)
+	koma := ban.FindMochiKoma(teban, kind)
 	if koma == nil {
 		return
 	}
@@ -927,7 +934,18 @@ func (ban TBan) DoDrop(teban TTeban, kind TKind, to TPosition) {
 	ban.PutKoma(koma)
 }
 
-func (ban TBan) FindKoma(teban TTeban, kind TKind) *TKoma {
+func (ban TBan) FindKoma(teban TTeban, kind TKind) *(map[TKomaId]*TKoma) {
+	teban_koma_map := ban.GetTebanKoma(teban)
+	result := make(map[TKomaId]*TKoma)
+	for _, koma := range *teban_koma_map {
+		if koma.Kind == kind {
+			result[koma.Id] = koma
+		}
+	}
+	return &result
+}
+
+func (ban TBan) FindMochiKoma(teban TTeban, kind TKind) *TKoma {
 	teban_koma_map := ban.GetTebanKoma(teban)
 	var found *TKoma = nil
 	for _, koma := range *teban_koma_map {

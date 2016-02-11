@@ -62,16 +62,38 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 	teban := *(ban.Teban)
 	// logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " +s(teban))
 	tegoma := ban.GetTebanKoma(teban)
+
+	// 自玉に王手がかかっているかどうかチェックする
+	is_oute := false
+	var gyoku_id TKomaId
+	gyoku_map := ban.FindKoma(teban, Gyoku)
+	for _, gyoku := range *gyoku_map {
+		// 1個しかないのにforを使う強引実装
+		gyoku_id = gyoku.Id
+		masu := ban.AllMasu[gyoku.Position]
+		kiki := masu.GetAiteKiki(teban)
+		if len(*kiki) > 0 {
+			is_oute = true
+		}
+	}
+
 	all_moves := make(map[byte]*TMove)
-
-	for koma_id, _ := range *tegoma {
-		// logger.Trace("[RandomPlayer] koma_id: " + s(koma_id))
-
-		for _, move := range ban.AllMoves[koma_id].Map {
+	if is_oute {
+		// 王手を回避しないと
+		// 暫定的に、玉が逃げる手だけのランダムで
+		for _, move := range ban.AllMoves[gyoku_id].Map {
 			AddMove(&all_moves, move)
 		}
-
+	} else {
+		// 今までどおりランダム
+		for koma_id, _ := range *tegoma {
+			// logger.Trace("[RandomPlayer] koma_id: " + s(koma_id))
+			for _, move := range ban.AllMoves[koma_id].Map {
+				AddMove(&all_moves, move)
+			}
+		}
 	}
+
 	moves_count := len(all_moves)
 	logger.Trace("[RandomPlayer] moves: " + s(moves_count))
 	if moves_count == 0 {
