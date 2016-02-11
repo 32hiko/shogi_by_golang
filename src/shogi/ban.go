@@ -578,7 +578,10 @@ func (ban TBan) ApplyMove(usi_move string) {
 		ban.DoMove(from, to, promote)
 	} else {
 		// "*"を含む＝打つ。先手の銀打ちならS*,後手の銀打ちならs*で始め、打つマスの表記は同じ。
+		// のはずだが、将棋所では先後問わず駒の種類が大文字になっている模様。
 		kind, teban := str2KindAndTeban(from_str)
+		// その手当て
+		teban = *(ban.Teban)
 		to := str2Position(to_str)
 
 		logger.Trace("駒打: " + teban_map[teban] + disp_map[kind] + ", to: " + s(to))
