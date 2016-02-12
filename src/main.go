@@ -66,6 +66,7 @@ func main() {
 			// TODO: 対局待ち状態に戻る。
 		default:
 			if s.HasPrefix(text, "position") {
+				logger.Trace(text)
 				split_text := s.Split(text, " ")
 				// 通常の対局
 				// position startpos moves 7g7f 8b7b 2g2f
@@ -99,7 +100,7 @@ func main() {
 						logger.Trace(master.Display())
 						tesuu++
 					}
-					resp("info string "+text, logger)
+					// resp("info string "+text, logger)
 				} else {
 					for index, value := range split_text {
 						if index < 3 {
@@ -114,7 +115,7 @@ func main() {
 						logger.Trace(master.Display())
 						tesuu++
 					}
-					resp("info string "+text, logger)
+					// resp("info string "+text, logger)
 				}
 			} else if s.HasPrefix(text, "go") {
 				bestmove := player.Search(master)
@@ -129,6 +130,7 @@ func main() {
 					logger.Trace(master.Display())
 					tesuu++
 				}
+				resp("info time 0 depth 1 nodes 1 score cp 28 pv " + bestmove, logger)
 				bestmove_str := "bestmove " + bestmove
 				resp(bestmove_str, logger)
 			}
