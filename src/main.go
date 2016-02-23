@@ -113,6 +113,7 @@ func main() {
 						logger.Trace("to apply: " + value)
 						master.ApplyMove(value)
 						logger.Trace(master.Display())
+						logger.Trace(master.ToSFEN())
 						tesuu++
 					}
 					// resp("info string "+text, logger)
@@ -128,6 +129,7 @@ func main() {
 						bestmove = s.ToUpper(from) + to
 					}
 					logger.Trace(master.Display())
+					logger.Trace(master.ToSFEN())
 					tesuu++
 				}
 				resp("info time 0 depth 1 nodes 1 score cp 28 pv " + bestmove, logger)

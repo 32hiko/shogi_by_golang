@@ -82,6 +82,76 @@ func FromSFEN(sfen string) *TBan {
 	return ban
 }
 
+func (ban TBan) ToSFEN() string {
+	// 例：lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1
+	var str string = ""
+
+	// 盤上
+	var empties int = 0
+	var x, y byte = 9, 1
+	for y <= 9 {
+		x = 9
+		for x >= 1 {
+			koma_id := ban.AllMasu[Bytes2TPosition(x, y)].KomaId
+			if koma_id == 0 {
+				empties++
+			} else {
+				koma := ban.AllKoma[koma_id]
+				if empties > 0 {
+					str += s(empties)
+					empties = 0
+				}
+				str += koma.GetUSIDropString()
+			}
+			x--
+		}
+		if empties > 0 {
+			str += s(empties)
+			empties = 0
+		}
+		str += "/"
+		y++
+	}
+	str += " "
+
+	// 手番
+	if *(ban.Teban) == Sente {
+		str += "b"
+	} else {
+		str += "w"
+	}
+	str += " "
+
+	// 持ち駒
+	var mochi_str string = ""
+	for kind, count := range ban.SenteMochigoma.Map {
+		if count != 0 {
+			if count != 1 {
+				mochi_str += s(count)
+			}
+			mochi_str += kind.GetUSIKind()
+		}
+	}
+	for kind, count := range ban.GoteMochigoma.Map {
+		if count != 0 {
+			if count != 1 {
+				mochi_str += s(count)
+			}
+			mochi_str += strings.ToLower(kind.GetUSIKind())
+		}
+	}
+	if mochi_str == "" {
+		str += "-"
+	} else {
+		str += mochi_str
+	}
+	str += " "
+
+	// 手数
+	str += s(*(ban.Tesuu))
+	return str
+}
+
 // 駒が持つデータ、マスが持つデータは今後も検討要
 type TMasu struct {
 	// マスの座標

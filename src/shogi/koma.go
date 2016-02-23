@@ -55,13 +55,14 @@ var promoted_disp_map = map[TKind]string{
 }
 
 var usi_drop_map = map[TKind]string{
-	Fu:   "P",
-	Kyo:  "L",
-	Kei:  "N",
-	Gin:  "S",
-	Kin:  "G",
-	Kaku: "B",
-	Hi:   "R",
+	Fu:    "P",
+	Kyo:   "L",
+	Kei:   "N",
+	Gin:   "S",
+	Kin:   "G",
+	Kaku:  "B",
+	Hi:    "R",
+	Gyoku: "K",
 }
 
 // 将棋だけど東西南北で。直接画面には出ないし。
@@ -261,7 +262,11 @@ func (koma TKoma) GetUSIDropString() string {
 	if !koma.IsSente {
 		k = strings.ToLower(k)
 	}
-	return k + "*"
+	return k
+}
+
+func (kind TKind) GetUSIKind() string {
+	return usi_drop_map[kind]
 }
 
 func (position TPosition) IsValidMove() bool {
