@@ -159,13 +159,13 @@ type TMasu struct {
 	// 駒があれば駒のId
 	KomaId TKomaId
 	// このマスに利かせている駒のIdを入れる。ヒートマップを作るため
-	SenteKiki *map[TKomaId]string // temp
-	GoteKiki  *map[TKomaId]string // temp
+	SenteKiki *map[TKomaId]TKiki // temp
+	GoteKiki  *map[TKomaId]TKiki // temp
 }
 
 func NewMasu(position TPosition, koma_id TKomaId) *TMasu {
-	s_kiki := make(map[TKomaId]string)
-	g_kiki := make(map[TKomaId]string)
+	s_kiki := make(map[TKomaId]TKiki)
+	g_kiki := make(map[TKomaId]TKiki)
 	masu := TMasu{
 		Position:  position,
 		KomaId:    koma_id,
@@ -175,9 +175,9 @@ func NewMasu(position TPosition, koma_id TKomaId) *TMasu {
 	return &masu
 }
 
-func (masu TMasu) SaveKiki(koma_id TKomaId, is_sente TTeban) {
+func (masu TMasu) SaveKiki(koma_id TKomaId, is_sente TTeban, tesuu int) {
 	kiki := masu.GetKiki(is_sente)
-	(*kiki)[koma_id] = ""
+	(*kiki)[koma_id] = TKiki(tesuu)
 }
 
 func (masu TMasu) DeleteKiki(koma_id TKomaId, is_sente TTeban) {
@@ -185,7 +185,7 @@ func (masu TMasu) DeleteKiki(koma_id TKomaId, is_sente TTeban) {
 	delete(*kiki, koma_id)
 }
 
-func (masu TMasu) GetKiki(is_sente TTeban) *map[TKomaId]string {
+func (masu TMasu) GetKiki(is_sente TTeban) *map[TKomaId]TKiki {
 	if is_sente {
 		return masu.SenteKiki
 	} else {
@@ -193,13 +193,15 @@ func (masu TMasu) GetKiki(is_sente TTeban) *map[TKomaId]string {
 	}
 }
 
-func (masu TMasu) GetAiteKiki(is_sente TTeban) *map[TKomaId]string {
+func (masu TMasu) GetAiteKiki(is_sente TTeban) *map[TKomaId]TKiki {
 	if is_sente {
 		return masu.GoteKiki
 	} else {
 		return masu.SenteKiki
 	}
 }
+
+type TKiki int
 
 func Bytes2TPosition(x byte, y byte) TPosition {
 	return TPosition(complex(float32(x), float32(y)))
@@ -566,7 +568,7 @@ func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition, is_far bool) ([
 	if to_pos.IsValidMove() {
 		// 利き先マスに、自駒のIdを保存する
 		kiki_masu := ban.AllMasu[to_pos]
-		kiki_masu.SaveKiki(koma.Id, koma.IsSente)
+		kiki_masu.SaveKiki(koma.Id, koma.IsSente, *(ban.Tesuu))
 		target_id := kiki_masu.KomaId
 		// 利き先マスに、駒があるかないか
 		if target_id != 0 {
@@ -588,7 +590,7 @@ func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition, is_far bool) ([
 					}
 					if saki.IsValidMove() {
 						saki_masu := ban.AllMasu[saki]
-						saki_masu.SaveKiki(koma.Id, koma.IsSente)
+						saki_masu.SaveKiki(koma.Id, koma.IsSente, *(ban.Tesuu))
 						logger := GetLogger()
 						logger.Trace("add kiki pos: " + s(saki))
 					}
@@ -1128,12 +1130,14 @@ func (ban TBan) Display() string {
 			str += s(pos)
 			str += " kiki: "
 			masu := ban.AllMasu[pos]
-			for k, _ := range *(masu.SenteKiki) {
+			for k, v := range *(masu.SenteKiki) {
 				str += ban.AllKoma[k].Display()
+				str += "(" + s(v) + ")"
 				str += ", "
 			}
-			for k, _ := range *(masu.GoteKiki) {
+			for k, v := range *(masu.GoteKiki) {
 				str += ban.AllKoma[k].Display()
+				str += "(" + s(v) + ")"
 				str += ", "
 			}
 			str += "\n"

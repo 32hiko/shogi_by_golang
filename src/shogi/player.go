@@ -64,7 +64,7 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 	tegoma := ban.GetTebanKoma(teban)
 
 	// 自玉に王手がかかっているかどうかチェックする
-	var oute_kiki *map[TKomaId]string
+	var oute_kiki *map[TKomaId]TKiki
 	var gyoku_id TKomaId
 	gyoku_map := ban.FindKoma(teban, Gyoku)
 	for _, gyoku := range *gyoku_map {
@@ -128,7 +128,7 @@ func (player TRandomPlayer) SearchSample(ban *TBan) string {
 	tegoma := ban.GetTebanKoma(teban)
 
 	// 自玉に王手がかかっているかどうかチェックする
-	var oute_kiki *map[TKomaId]string
+	var oute_kiki *map[TKomaId]TKiki
 	var gyoku_id TKomaId
 	gyoku_map := ban.FindKoma(teban, Gyoku)
 	for _, gyoku := range *gyoku_map {
