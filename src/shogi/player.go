@@ -65,10 +65,12 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 
 	// 自玉に王手がかかっているかどうかチェックする
 	var oute_kiki *map[TKomaId]TKiki
+	var jigyoku *TKoma
 	var gyoku_id TKomaId
 	gyoku_map := ban.FindKoma(teban, Gyoku)
 	for _, gyoku := range *gyoku_map {
 		// 1個しかないのにforを使う強引実装
+		jigyoku = gyoku
 		gyoku_id = gyoku.Id
 		masu := ban.AllMasu[gyoku.Position]
 		oute_kiki = masu.GetAiteKiki(teban)
@@ -81,22 +83,37 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 		for _, move := range ban.AllMoves[gyoku_id].Map {
 			AddMove(&all_moves, move)
 		}
-		// 王手かけてる駒を取る手
+		// 両王手でなければ、王手かけてる駒を取る手か、合い駒する
 		if len(*oute_kiki) == 1 {
-			// 王手かけてる駒を取る手を探す
 			for target_id, _ := range *oute_kiki {
 				// 1個しかないのにforを使う強引実装
 				target_koma := ban.AllKoma[target_id]
 				for koma_id, _ := range *tegoma {
+					// 王手かけてる駒を取る手を探す
 					for _, move := range ban.AllMoves[koma_id].Map {
 						if move.ToPosition == target_koma.Position {
 							AddMove(&all_moves, move)
 						}
 					}
 				}
+				if target_koma.CanFarMove() {
+					aida_map := make(map[TPosition]string)
+					aida := jigyoku.Position - target_koma.Position
+					for p := target_koma.Position + aida.Vector(); p != jigyoku.Position; p += aida.Vector() {
+						aida_map[p] = ""
+					}
+					// 合い駒になる手を探す
+					for koma_id, _ := range *tegoma {
+						for _, move := range ban.AllMoves[koma_id].Map {
+							_, ok := aida_map[move.ToPosition]
+							if ok {
+								AddMove(&all_moves, move)
+							}
+						}
+					}
+				}
 			}
 		}
-		// TODO:合い駒
 	} else {
 		// 今までどおり全部の手からランダム
 		for koma_id, _ := range *tegoma {

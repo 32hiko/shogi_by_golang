@@ -637,6 +637,9 @@ func (ban TBan) ApplyMove(usi_move string) {
 	from_str = usi_move[0:2]
 	to_str = usi_move[2:4]
 
+	// これから反映する手数
+	*(ban.Tesuu) += 1
+
 	logger := GetLogger()
 	// 駒を打つかどうか
 	is_drop := strings.Index(from_str, "*")
@@ -670,8 +673,7 @@ func (ban TBan) ApplyMove(usi_move string) {
 	// 玉の自殺手を削除する
 	ban.DeleteSuicideMoves()
 
-	// 指し手の反映が終わり
-	*(ban.Tesuu) += 1
+	// 指し手の反映が終わり、相手の手番に
 	*(ban.Teban) = !*(ban.Teban)
 }
 
@@ -806,6 +808,8 @@ func (ban TBan) DoDeleteSuicideMoves(teban TTeban) {
 				if len(*kiki) > 0 {
 					// TODO 当たっている利きが遠利きかどうか確認する処理も必要。
 					// 通常、利きは貫通しないが、玉の場合は貫通するようにしておけば、このロジックでもいいかな？
+					// →現状、遠利きについてはそれでもいい。
+					// 玉頭の歩も自分では取れないことになっているはずなので、同玉を指せるように利きが2個以上なら自殺と判断するべき
 					move.IsValid = false
 					logger := GetLogger()
 					logger.Trace("DoDeleteSuicideMoves is sente: " + s(teban))
