@@ -809,7 +809,6 @@ func (ban TBan) DoDeleteSuicideMoves(teban TTeban) {
 					// TODO 当たっている利きが遠利きかどうか確認する処理も必要。
 					// 通常、利きは貫通しないが、玉の場合は貫通するようにしておけば、このロジックでもいいかな？
 					// →現状、遠利きについてはそれでもいい。
-					// 玉頭の歩も自分では取れないことになっているはずなので、同玉を指せるように利きが2個以上なら自殺と判断するべき
 					move.IsValid = false
 					logger := GetLogger()
 					logger.Trace("DoDeleteSuicideMoves is sente: " + s(teban))
