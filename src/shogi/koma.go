@@ -112,16 +112,19 @@ type TKoma struct {
 	Position TPosition
 	IsSente  TTeban
 	Promoted bool
+	PinTesuu *int
 }
 
 // 駒の生成は対局開始前にやればいいので変換とかやってもいいでしょう
 func NewKoma(id TKomaId, kind TKind, x byte, y byte, isSente TTeban) *TKoma {
+	tesuu := 0
 	koma := TKoma{
 		Id:       id,
 		Kind:     kind,
 		Position: Bytes2TPosition(x, y),
 		IsSente:  isSente,
 		Promoted: false,
+		PinTesuu: &tesuu,
 	}
 	return &koma
 }

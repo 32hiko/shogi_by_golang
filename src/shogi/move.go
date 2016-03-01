@@ -5,6 +5,7 @@ import (
 )
 
 type TMoves struct {
+	// USIのstringではなく、TPositionをkeyにする？stringは全然使ってない
 	Map map[string]*TMove
 }
 

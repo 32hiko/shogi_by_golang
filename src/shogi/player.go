@@ -96,6 +96,7 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 						}
 					}
 				}
+				// 王手かけてる駒が遠利きなら
 				if target_koma.CanFarMove() {
 					aida_map := make(map[TPosition]string)
 					aida := jigyoku.Position - target_koma.Position

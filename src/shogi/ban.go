@@ -801,8 +801,12 @@ func (ban TBan) DeleteSuicideMoves() {
 
 func (ban TBan) DoDeleteSuicideMoves(teban TTeban) {
 	teban_koma := ban.GetTebanKoma(teban)
+	var gyoku *TKoma
+	// 自玉を探す
 	for _, koma := range *teban_koma {
 		if koma.Kind == Gyoku {
+			gyoku = koma
+			// 玉の動ける先に相手の利きがないか調べ、利きがあるならその手は自殺手として削除する
 			for _, move := range ban.AllMoves[koma.Id].Map {
 				kiki := ban.AllMasu[move.ToPosition].GetAiteKiki(teban)
 				if len(*kiki) > 0 {
@@ -816,6 +820,48 @@ func (ban TBan) DoDeleteSuicideMoves(teban TTeban) {
 			}
 			ban.AllMoves[koma.Id] = ban.AllMoves[koma.Id].DeleteInvalidMoves()
 			break
+		}
+	}
+	aite_koma := ban.GetTebanKoma(!teban)
+	for _, koma := range *aite_koma {
+		// 相手の駒のうち、遠利きのある駒を探す
+		if koma.CanFarMove() && koma.Position != Mochigoma {
+			all_moves := koma.GetAllMoves()
+			for _, move := range all_moves.Map {
+				// 王が遠利きの筋に入っている場合、間に駒があるか調べる。
+				// 龍や馬の近い利きも含んでしまっているが、for文が即終了するので問題ないはず。
+				if gyoku.Position == move.ToPosition {
+					aida := gyoku.Position - koma.Position
+					var shibari_koma *TKoma = nil
+					is_shibari := false
+					// 相手の駒から王までの間を、相手の駒のとなりから調べていく。
+					for p := koma.Position + aida.Vector(); p != gyoku.Position; p += aida.Vector() {
+						masu := ban.AllMasu[p]
+						if masu.KomaId != 0 {
+							// 縛っている駒がすでにあり、次の駒があった場合、駒の縛りはない
+							if is_shibari {
+								shibari_koma = nil
+								break
+							} else {
+								// 縛っている駒がない時に王の陣営の駒があったら縛る
+								k := ban.AllKoma[masu.KomaId]
+								if k.IsSente == teban {
+									shibari_koma = k
+									is_shibari = true
+								} else {
+									// 相手の陣営の駒があったら縛りはない
+									break
+								}
+							}
+						}
+					}
+					if shibari_koma != nil {
+						*(shibari_koma.PinTesuu) = *(ban.Tesuu)
+						logger := GetLogger()
+						logger.Trace("DoDeleteSuicideMoves shibari: " + shibari_koma.Display() + "id: " + s(shibari_koma.Id))
+					}
+				}
+			}
 		}
 	}
 }
@@ -990,7 +1036,6 @@ func (ban TBan) RefreshMovesAndKiki(masu *TMasu, kiki_teban TTeban, removed_koma
 					if move.ToPosition == masu.Position {
 						move.ToId = 0
 					}
-					break
 				}
 			}
 		}
