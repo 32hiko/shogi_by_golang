@@ -60,7 +60,7 @@ func NewRandomPlayer() *TRandomPlayer {
 func (player TRandomPlayer) Search(ban *TBan) string {
 	logger := GetLogger()
 	teban := *(ban.Teban)
-	logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " +s(teban))
+	logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
 	tegoma := ban.GetTebanKoma(teban)
 	koma_moves := make(map[TKomaId]*TMoves)
 
@@ -79,41 +79,7 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 	all_moves := make(map[byte]*TMove)
 	if len(*oute_kiki) > 0 {
 		// 王手を回避する
-		// 玉が逃げる手
-		for _, move := range jigyoku_moves.Map {
-			AddMove(&all_moves, move)
-		}
-		// 両王手でなければ、王手かけてる駒を取る手か、合い駒する
-		if len(*oute_kiki) == 1 {
-			for target_id, _ := range *oute_kiki {
-				// 1個しかないのにforを使う強引実装
-				target_koma := ban.AllKoma[target_id]
-				for _, moves := range koma_moves {
-					for _, move := range moves.Map {
-						if move.ToPosition == target_koma.Position {
-							AddMove(&all_moves, move)
-						}
-					}
-				}
-				// 王手かけてる駒が遠利きなら
-				if target_koma.CanFarMove() {
-					aida_map := make(map[TPosition]string)
-					aida := jigyoku.Position - target_koma.Position
-					for p := target_koma.Position + aida.Vector(); p != jigyoku.Position; p += aida.Vector() {
-						aida_map[p] = ""
-					}
-					// 合い駒になる手を探す
-					for _, moves := range koma_moves {
-						for _, move := range moves.Map {
-							_, ok := aida_map[move.ToPosition]
-							if ok {
-								AddMove(&all_moves, move)
-							}
-						}
-					}
-				}
-			}
-		}
+		RespondOute(ban, &koma_moves, jigyoku, oute_kiki, &all_moves)
 	} else {
 		// 今までどおり全部の手からランダム
 		for _, moves := range koma_moves {
@@ -149,6 +115,44 @@ func MergeMoves(moves *map[TKomaId]*TMoves, tegoma *(map[TKomaId]*TKoma), ban *T
 		_, ok := (*moves)[koma_id]
 		if !ok {
 			(*moves)[koma_id] = ban.AllMoves[koma_id]
+		}
+	}
+}
+
+func RespondOute(ban *TBan, koma_moves *map[TKomaId]*TMoves, jigyoku *TKoma, oute_kiki *map[TKomaId]TKiki, all_moves *map[byte]*TMove) {
+	// 玉が逃げる手
+	for _, move := range (*koma_moves)[jigyoku.Id].Map {
+		AddMove(all_moves, move)
+	}
+	// 両王手でなければ、王手かけてる駒を取る手か、合い駒する
+	if len(*oute_kiki) == 1 {
+		for target_id, _ := range *oute_kiki {
+			// 1個しかないのにforを使う強引実装
+			target_koma := ban.AllKoma[target_id]
+			for _, moves := range *koma_moves {
+				for _, move := range moves.Map {
+					if move.ToPosition == target_koma.Position {
+						AddMove(all_moves, move)
+					}
+				}
+			}
+			// 王手かけてる駒が遠利きなら
+			if target_koma.CanFarMove() {
+				aida_map := make(map[TPosition]string)
+				aida := jigyoku.Position - target_koma.Position
+				for p := target_koma.Position + aida.Vector(); p != jigyoku.Position; p += aida.Vector() {
+					aida_map[p] = ""
+				}
+				// 合い駒になる手を探す
+				for _, moves := range *koma_moves {
+					for _, move := range moves.Map {
+						_, ok := aida_map[move.ToPosition]
+						if ok {
+							AddMove(all_moves, move)
+						}
+					}
+				}
+			}
 		}
 	}
 }
