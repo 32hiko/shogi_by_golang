@@ -823,7 +823,6 @@ func (ban TBan) FilterPinnedMoves(gyoku *TKoma, moves *(map[TKomaId]*TMoves)) {
 						}
 					}
 					if pinned_koma != nil {
-						*(pinned_koma.PinTesuu) = *(ban.Tesuu)
 						logger := GetLogger()
 						logger.Trace("DoDeleteSuicideMoves pinned: " + pinned_koma.Display() + "id: " + s(pinned_koma.Id))
 						pinned_moves := NewMoves()
