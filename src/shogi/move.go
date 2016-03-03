@@ -71,7 +71,7 @@ func NewMove(koma *TKoma, to_position TPosition, to_id TKomaId) *TMove {
 }
 
 func (move TMove) CanPromote(teban TTeban) (bool, *TMove) {
-	if move.Koma.Kind == Gyoku {
+	if move.Koma.Kind == Gyoku || move.Koma.Kind == Kin {
 		return false, nil
 	}
 	from_y := imag(move.FromPosition)

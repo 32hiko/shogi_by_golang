@@ -667,12 +667,6 @@ func (ban TBan) ApplyMove(usi_move string) {
 	ban.CheckEmptyMasu()
 	// 打つ手を生成する
 	ban.CreateAllMochigomaMoves()
-
-	// 玉の動きを作成し直す（下の処理で削除されると、上の処理で再作成されるとは限らないので）
-	ban.UpdateGyokuMoves()
-	// 玉の自殺手を削除する
-	ban.DeleteSuicideMoves()
-
 	// 指し手の反映が終わり、相手の手番に
 	*(ban.Teban) = !*(ban.Teban)
 }
@@ -775,54 +769,23 @@ func (ban TBan) CreateMochigomaMoves(koma *TKoma) *TMoves {
 	return moves
 }
 
-func (ban TBan) UpdateGyokuMoves() {
-	// 両陣営の玉について、手を生成し直す（次のロジックによる削除が、自動では復元されないので）
-	ban.DoUpdateGyokuMoves(Sente)
-	ban.DoUpdateGyokuMoves(Gote)
-}
-
-func (ban TBan) DoUpdateGyokuMoves(teban TTeban) {
-	teban_koma := ban.GetTebanKoma(teban)
-	for _, koma := range *teban_koma {
-		if koma.Kind == Gyoku {
-			ban.AllMoves[koma.Id] = ban.CreateFarMovesAndKiki(koma)
-			logger := GetLogger()
-			logger.Trace("DoUpdateMoves is sente: " + s(teban))
-			break
+func (ban TBan) FilterSuicideMoves(gyoku *TKoma) *TMoves {
+	new_moves := NewMoves()
+	// 玉の動ける先に相手の利きがないか調べ、利きがあるならその手は自殺手として削除する
+	for _, move := range ban.AllMoves[gyoku.Id].Map {
+		kiki := ban.AllMasu[move.ToPosition].GetAiteKiki(gyoku.IsSente)
+		// TODO 当たっている利きが遠利きかどうか確認する処理も必要。
+		// 通常、利きは貫通しないが、玉の場合は貫通するようにしておけば、このロジックでもいいかな？
+		// →現状、遠利きについてはそれでもいい。
+		if len(*kiki) == 0 {
+			new_moves.Add(move)
 		}
 	}
+	return new_moves
 }
 
-func (ban TBan) DeleteSuicideMoves() {
-	// 両陣営の玉について、自殺手を削除する
-	ban.DoDeleteSuicideMoves(Sente)
-	ban.DoDeleteSuicideMoves(Gote)
-}
-
-func (ban TBan) DoDeleteSuicideMoves(teban TTeban) {
-	teban_koma := ban.GetTebanKoma(teban)
-	var gyoku *TKoma
-	// 自玉を探す
-	for _, koma := range *teban_koma {
-		if koma.Kind == Gyoku {
-			gyoku = koma
-			// 玉の動ける先に相手の利きがないか調べ、利きがあるならその手は自殺手として削除する
-			for _, move := range ban.AllMoves[koma.Id].Map {
-				kiki := ban.AllMasu[move.ToPosition].GetAiteKiki(teban)
-				if len(*kiki) > 0 {
-					// TODO 当たっている利きが遠利きかどうか確認する処理も必要。
-					// 通常、利きは貫通しないが、玉の場合は貫通するようにしておけば、このロジックでもいいかな？
-					// →現状、遠利きについてはそれでもいい。
-					move.IsValid = false
-					logger := GetLogger()
-					logger.Trace("DoDeleteSuicideMoves is sente: " + s(teban))
-				}
-			}
-			ban.AllMoves[koma.Id] = ban.AllMoves[koma.Id].DeleteInvalidMoves()
-			break
-		}
-	}
-	aite_koma := ban.GetTebanKoma(!teban)
+func (ban TBan) FilterPinnedMoves(gyoku *TKoma, moves *(map[TKomaId]*TMoves)) {
+	aite_koma := ban.GetTebanKoma(!gyoku.IsSente)
 	for _, koma := range *aite_koma {
 		// 相手の駒のうち、遠利きのある駒を探す
 		if koma.CanFarMove() && koma.Position != Mochigoma {
@@ -832,22 +795,26 @@ func (ban TBan) DoDeleteSuicideMoves(teban TTeban) {
 				// 龍や馬の近い利きも含んでしまっているが、for文が即終了するので問題ないはず。
 				if gyoku.Position == move.ToPosition {
 					aida := gyoku.Position - koma.Position
-					var shibari_koma *TKoma = nil
-					is_shibari := false
+					var pinned_koma *TKoma = nil
+					is_pinned := false
+					aida_map := make(map[TPosition]string)
+					// ピンされていても、ピンしている駒を取る手は可能とする。
+					aida_map[koma.Position] = ""
 					// 相手の駒から王までの間を、相手の駒のとなりから調べていく。
 					for p := koma.Position + aida.Vector(); p != gyoku.Position; p += aida.Vector() {
+						aida_map[p] = ""
 						masu := ban.AllMasu[p]
 						if masu.KomaId != 0 {
 							// 縛っている駒がすでにあり、次の駒があった場合、駒の縛りはない
-							if is_shibari {
-								shibari_koma = nil
+							if is_pinned {
+								pinned_koma = nil
 								break
 							} else {
 								// 縛っている駒がない時に王の陣営の駒があったら縛る
 								k := ban.AllKoma[masu.KomaId]
-								if k.IsSente == teban {
-									shibari_koma = k
-									is_shibari = true
+								if k.IsSente == gyoku.IsSente {
+									pinned_koma = k
+									is_pinned = true
 								} else {
 									// 相手の陣営の駒があったら縛りはない
 									break
@@ -855,10 +822,19 @@ func (ban TBan) DoDeleteSuicideMoves(teban TTeban) {
 							}
 						}
 					}
-					if shibari_koma != nil {
-						*(shibari_koma.PinTesuu) = *(ban.Tesuu)
+					if pinned_koma != nil {
+						*(pinned_koma.PinTesuu) = *(ban.Tesuu)
 						logger := GetLogger()
-						logger.Trace("DoDeleteSuicideMoves shibari: " + shibari_koma.Display() + "id: " + s(shibari_koma.Id))
+						logger.Trace("DoDeleteSuicideMoves pinned: " + pinned_koma.Display() + "id: " + s(pinned_koma.Id))
+						pinned_moves := NewMoves()
+						for _, move := range ban.AllMoves[pinned_koma.Id].Map {
+							// ピンされている駒は、ピンしている駒を取る手か、利き筋の中でのみ移動できる。
+							_, ok := aida_map[move.ToPosition]
+							if ok {
+								pinned_moves.Add(move)
+							}
+						}
+						(*moves)[pinned_koma.Id] = pinned_moves
 					}
 				}
 			}
