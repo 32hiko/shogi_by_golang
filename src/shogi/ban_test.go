@@ -19,3 +19,12 @@ func TestFromSFEN(t *testing.T) {
 	p(ban2.Display())
 	p("TestFromSFEN")
 }
+
+func TestCountKikiMasu(t *testing.T) {
+	ban1 := CreateInitialState()
+	count := ban1.CountKikiMasu(Sente)
+	if count != 30 {
+		t.Errorf("count: actual:[%v] expected:[%v]", count, 30)
+	}
+	p("TestCountKiki")
+}

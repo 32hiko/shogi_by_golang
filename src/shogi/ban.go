@@ -1088,6 +1088,17 @@ func AddMove(moves *map[byte]*TMove, move *TMove) {
 	}
 }
 
+func (ban TBan) CountKikiMasu(teban TTeban) int {
+	var count int = 0
+	for _, masu := range ban.AllMasu {
+		kiki_map := masu.GetKiki(teban)
+		if len(*kiki_map) > 0 {
+			count++
+		}
+	}
+	return count
+}
+
 func (ban TBan) Display() string {
 	var str string = ""
 	// display ban

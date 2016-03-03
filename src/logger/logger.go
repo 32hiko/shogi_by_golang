@@ -10,12 +10,14 @@ type Logger struct {
 }
 
 var instance *Logger
+
 func InitLogger() {
 	instance = new(Logger)
 	const format = "20060102150405"
 	t := time.Now()
 	file_name := t.Format(format) + ".log"
-	instance.log_file ,_ =os.Create("/home/gohan/workspace/shogi01/" + file_name)
+	// instance.log_file ,_ =os.Create("/home/gohan/workspace/shogi01/" + file_name)
+	instance.log_file, _ = os.Create(file_name)
 }
 
 func GetLogger() *Logger {
