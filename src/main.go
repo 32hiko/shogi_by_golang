@@ -11,7 +11,7 @@ import (
 
 // const
 const PROGRAM_NAME = "HoneyWaffle"
-const PROGRAM_VERSION = "0.0.1"
+const PROGRAM_VERSION = "0.0.2"
 const AUTHOR = "Mitsuhiko Watanabe"
 
 // alias
@@ -132,7 +132,7 @@ func main() {
 					logger.Trace(master.ToSFEN())
 					tesuu++
 				}
-				resp("info time 0 depth 1 nodes 1 score cp 28 pv " + bestmove, logger)
+				resp("info time 0 depth 1 nodes 1 score cp 28 pv "+bestmove, logger)
 				bestmove_str := "bestmove " + bestmove
 				resp(bestmove_str, logger)
 			}
