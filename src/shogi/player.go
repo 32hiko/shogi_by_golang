@@ -16,6 +16,8 @@ func NewPlayer(name string) IPlayer {
 		return NewSlidePlayer()
 	case "Random":
 		return NewRandomPlayer()
+	case "Kiki":
+		return NewKikiPlayer()
 	default:
 		return nil
 	}
@@ -61,6 +63,67 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
+
+	all_moves := MakeAllMoves(ban)
+
+	moves_count := len(all_moves)
+	logger.Trace("[RandomPlayer] moves: " + s(moves_count))
+	if moves_count == 0 {
+		return "resign"
+	}
+	rand.Seed(time.Now().UnixNano())
+	random_index := rand.Intn(len(all_moves))
+	random_move := all_moves[byte(random_index)]
+	return random_move.GetUSIMoveString()
+}
+
+/*
+ * 利きが通っているマスの数で評価してみる。
+ */
+type TKikiPlayer struct {
+}
+
+func NewKikiPlayer() *TKikiPlayer {
+	player := TKikiPlayer{}
+	return &player
+}
+
+func (player TKikiPlayer) Search(ban *TBan) string {
+	logger := GetLogger()
+	teban := *(ban.Teban)
+	logger.Trace("[KikiPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
+
+	all_moves := MakeAllMoves(ban)
+
+	moves_count := len(all_moves)
+	logger.Trace("[KikiPlayer] moves: " + s(moves_count))
+	if moves_count == 0 {
+		return "resign"
+	}
+
+	move := GetMaxKikiMove(ban, &all_moves)
+	return move.GetUSIMoveString()
+}
+
+func GetMaxKikiMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
+	current_sfen := ban.ToSFEN()
+	current_max := 0
+	var current_move_key byte = 0
+	for key, move := range *all_moves {
+		new_ban := FromSFEN(current_sfen)
+		new_ban.ApplyMove(move.GetUSIMoveString())
+		count := new_ban.CountKikiMasu(*(ban.Teban))
+		count -= new_ban.CountKikiMasu(!*(ban.Teban))
+		if current_max < count {
+			current_max = count
+			current_move_key = key
+		}
+	}
+	return (*all_moves)[current_move_key]
+}
+
+func MakeAllMoves(ban *TBan) map[byte]*TMove {
+	teban := *(ban.Teban)
 	tegoma := ban.GetTebanKoma(teban)
 	koma_moves := make(map[TKomaId]*TMoves)
 
@@ -81,23 +144,14 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 		// 王手を回避する
 		RespondOute(ban, &koma_moves, jigyoku, oute_kiki, &all_moves)
 	} else {
-		// 今までどおり全部の手からランダム
+		// 今までどおり全部の手から
 		for _, moves := range koma_moves {
 			for _, move := range moves.Map {
 				AddMove(&all_moves, move)
 			}
 		}
 	}
-
-	moves_count := len(all_moves)
-	logger.Trace("[RandomPlayer] moves: " + s(moves_count))
-	if moves_count == 0 {
-		return "resign"
-	}
-	rand.Seed(time.Now().UnixNano())
-	random_index := rand.Intn(len(all_moves))
-	random_move := all_moves[byte(random_index)]
-	return random_move.GetUSIMoveString()
+	return all_moves
 }
 
 func FindJiGyoku(ban *TBan, teban TTeban) *TKoma {
