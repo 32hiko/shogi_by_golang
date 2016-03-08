@@ -38,7 +38,8 @@ func main() {
 	var master *TBan
 	var tesuu int = 0
 	//player := NewPlayer("Slide")
-	player := NewPlayer("Random")
+	//player := NewPlayer("Random")
+	player := NewPlayer("Main")
 
 	// 将棋所とのやりとり
 	// TODO:いつでも返答すべきコマンドは常時listenするイメージで。GoRoutineとChannelを使えばよさげ

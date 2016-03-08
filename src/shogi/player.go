@@ -18,6 +18,8 @@ func NewPlayer(name string) IPlayer {
 		return NewRandomPlayer()
 	case "Kiki":
 		return NewKikiPlayer()
+	case "Main":
+		return NewMainPlayer()
 	default:
 		return nil
 	}
@@ -78,7 +80,8 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 }
 
 /*
- * 利きが通っているマスの数で評価してみる。
+ * 利きが通っているマスの数だけで評価してみる。
+ * →相手の大駒の近くに駒を寄せるだけだった。
  */
 type TKikiPlayer struct {
 }
@@ -106,8 +109,9 @@ func (player TKikiPlayer) Search(ban *TBan) string {
 }
 
 func GetMaxKikiMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
+	logger := GetLogger()
 	current_sfen := ban.ToSFEN()
-	current_max := 0
+	current_max := -81
 	var current_move_key byte = 0
 	for key, move := range *all_moves {
 		new_ban := FromSFEN(current_sfen)
@@ -115,6 +119,75 @@ func GetMaxKikiMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 		count := new_ban.CountKikiMasu(*(ban.Teban))
 		count -= new_ban.CountKikiMasu(!*(ban.Teban))
 		if current_max < count {
+			logger.Trace("[KikiPlayer] count: " + s(count))
+			current_max = count
+			current_move_key = key
+		}
+	}
+	return (*all_moves)[current_move_key]
+}
+
+type TMainPlayer struct {
+}
+
+func NewMainPlayer() *TMainPlayer {
+	player := TMainPlayer{}
+	return &player
+}
+
+func (player TMainPlayer) Search(ban *TBan) string {
+	logger := GetLogger()
+	teban := *(ban.Teban)
+	logger.Trace("[MainPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
+
+	all_moves := MakeAllMoves(ban)
+
+	moves_count := len(all_moves)
+	logger.Trace("[MainPlayer] moves: " + s(moves_count))
+	if moves_count == 0 {
+		return "resign"
+	}
+
+	move := GetMainBestMove(ban, &all_moves)
+	return move.GetUSIMoveString()
+}
+
+func GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
+	logger := GetLogger()
+	teban := *(ban.Teban)
+	current_sfen := ban.ToSFEN()
+	current_max := -81
+	var current_move_key byte = 0
+	for key, move := range *all_moves {
+		// 実際に動かしてみる
+		new_ban := FromSFEN(current_sfen)
+		new_ban.ApplyMove(move.GetUSIMoveString())
+
+		// 利いているマスの数の評価
+		masu_count := new_ban.CountKikiMasu(teban)
+		masu_count -= new_ban.CountKikiMasu(!teban)
+		masu_count *= 30 // 調整パラメーター
+
+		// 駒得（1手しか読まないので駒の枚数だけ）
+		teban_koma := new_ban.GetTebanKoma(teban)
+		komadoku_point := len(*teban_koma)
+		komadoku_point *= 50
+
+		// タダ捨てを抑止したい
+		// 単純に利きの数だけだと、自分の駒の利いてる範囲でうろつくだけになる。タダの地点だけマイナスするほうがよさそう
+		move_masu := new_ban.AllMasu[move.ToPosition]
+		teban_kiki := move_masu.GetKiki(teban)
+		aite_kiki := move_masu.GetAiteKiki(teban)
+		tada_point := len(*teban_kiki) - len(*aite_kiki)
+		if tada_point < 0 {
+			tada_point *= 1000
+		} else {
+			tada_point *= 10
+		}
+
+		count := masu_count + komadoku_point + tada_point
+		if current_max < count {
+			logger.Trace("[MainPlayer] count: " + s(count))
 			current_max = count
 			current_move_key = key
 		}
