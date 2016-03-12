@@ -157,6 +157,15 @@ func GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 	teban := *(ban.Teban)
 	current_sfen := ban.ToSFEN()
 	current_max := -81
+
+	// 最終手に反応するための準備
+	last_move_masu := ban.AllMasu[*(ban.LastMoveTo)]
+	last_move_koma_moves := ban.AllMoves[last_move_masu.KomaId]
+	last_move_map := make(map[TPosition]string)
+	for _, move := range last_move_koma_moves.Map {
+		last_move_map[move.ToPosition] = ""
+	}
+
 	var current_move_key byte = 0
 	for key, move := range *all_moves {
 		// 実際に動かしてみる
@@ -166,7 +175,7 @@ func GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 		// 利いているマスの数の評価
 		masu_count := new_ban.CountKikiMasu(teban)
 		masu_count -= new_ban.CountKikiMasu(!teban)
-		masu_count *= 30 // 調整パラメーター
+		masu_count *= 10 // 調整パラメーター
 
 		// 駒得（1手しか読まないので駒の枚数だけ）
 		teban_koma := new_ban.GetTebanKoma(teban)
@@ -180,12 +189,20 @@ func GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 		aite_kiki := move_masu.GetAiteKiki(teban)
 		tada_point := len(*teban_kiki) - len(*aite_kiki)
 		if tada_point < 0 {
-			tada_point *= 1000
+			tada_point *= 200
 		} else {
 			tada_point *= 10
 		}
 
-		count := masu_count + komadoku_point + tada_point
+		// 相手の手に反応するため、最後の手の利きを重く捉える
+		// これ入れても、変な反応をして弱くなる
+		_, ok := last_move_map[move.FromPosition]
+		escape_point := 0
+		if ok {
+			escape_point = 100
+		}
+
+		count := masu_count + komadoku_point + tada_point + escape_point
 		if current_max < count {
 			logger.Trace("[MainPlayer] count: " + s(count))
 			current_max = count

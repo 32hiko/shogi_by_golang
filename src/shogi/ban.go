@@ -24,6 +24,7 @@ type TBan struct {
 	EmptyMasu      []TPosition
 	FuDropSente    []byte
 	FuDropGote     []byte
+	LastMoveTo     *TPosition
 }
 
 func NewBan() *TBan {
@@ -623,7 +624,7 @@ func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta TPosition) []*TMove {
 }
 
 // USI形式のmoveを反映させる。
-func (ban TBan) ApplyMove(usi_move string) {
+func (ban *TBan) ApplyMove(usi_move string) {
 	// usi_moveをこちらのmoveに変換する
 	var from_str string
 	var to_str string
@@ -636,6 +637,7 @@ func (ban TBan) ApplyMove(usi_move string) {
 	}
 	from_str = usi_move[0:2]
 	to_str = usi_move[2:4]
+	var to TPosition
 
 	// これから反映する手数
 	*(ban.Tesuu) += 1
@@ -646,7 +648,7 @@ func (ban TBan) ApplyMove(usi_move string) {
 	if is_drop == -1 {
 		// 打たない
 		from := str2Position(from_str)
-		to := str2Position(to_str)
+		to = str2Position(to_str)
 
 		logger.Trace("from: " + s(from) + ", to: " + s(to))
 		// こちらのmoveを実行する
@@ -657,12 +659,14 @@ func (ban TBan) ApplyMove(usi_move string) {
 		kind, teban := str2KindAndTeban(from_str)
 		// その手当て
 		teban = *(ban.Teban)
-		to := str2Position(to_str)
+		to = str2Position(to_str)
 
 		logger.Trace("駒打: " + teban_map[teban] + disp_map[kind] + ", to: " + s(to))
 		ban.DoDrop(teban, kind, to)
 	}
 
+	// 最後の手を保存しておく
+	ban.LastMoveTo = &to
 	// 駒を打つ手を生成するために、空いているマスや二歩のチェックをする
 	ban.CheckEmptyMasu()
 	// 打つ手を生成する
