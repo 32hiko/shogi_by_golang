@@ -262,6 +262,9 @@ func (koma TKoma) GetUSIDropString() string {
 	if !koma.IsSente {
 		k = strings.ToLower(k)
 	}
+	if koma.Promoted {
+		k = "+" + k
+	}
 	return k
 }
 

@@ -369,6 +369,7 @@ func (ban TBan) PutSFENKoma(sfen string) {
 	var koma_id TKomaId = 1
 	for _, line := range arr {
 		x = 9
+		promote := false
 		// 1文字ずつチェックする。
 		for i := 0; i < len(line); i++ {
 			char := line[i : i+1]
@@ -376,8 +377,19 @@ func (ban TBan) PutSFENKoma(sfen string) {
 			num := strings.Index("0123456789", char)
 			if num == -1 {
 				// 数字ではないので駒が存在するマス。
+				plus := strings.Index("+", char)
+				if plus == 0 {
+					// +は次の文字が成り駒であることを意味する。
+					promote = true
+					continue
+				}
 				kind, teban := str2KindAndTeban(char)
-				ban.PutKoma(NewKoma(koma_id, kind, x, y, teban))
+				koma := NewKoma(koma_id, kind, x, y, teban)
+				if promote {
+					koma.Promoted = true
+					promote = false
+				}
+				ban.PutKoma(koma)
 				koma_id++
 				x--
 			} else {
@@ -434,7 +446,6 @@ func (ban TBan) DeleteCloseMovesAndKiki(koma *TKoma, is_sente TTeban) {
 						if move.ToPosition == koma.Position {
 							move.ToId = koma.Id
 							saved = true
-							break
 						}
 					}
 					if !saved {
