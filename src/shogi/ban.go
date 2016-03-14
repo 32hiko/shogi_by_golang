@@ -744,10 +744,10 @@ func (ban TBan) CreateAllMochigomaMoves() {
 }
 
 func (ban TBan) DoCreateAllMochigomaMoves(teban TTeban) {
-	teban_koma := ban.GetTebanKoma(teban)
-	for _, koma := range *teban_koma {
-		// 駒の種類ごとにキャッシュしたほうがいいとかは当然あるが。単純に生成できるようにする。
-		if koma.Position == Mochigoma {
+	all_mochigoma := *(ban.GetMochigoma(teban))
+	for kind, num := range all_mochigoma.Map {
+		if num > 0 {
+			koma := ban.FindMochiKoma(teban, kind)
 			ban.AllMoves[koma.Id] = ban.CreateMochigomaMoves(koma)
 		}
 	}
