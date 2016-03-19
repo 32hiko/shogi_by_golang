@@ -688,7 +688,7 @@ func (ban *TBan) ApplyMove(usi_move string) {
 
 func (ban *TBan) CheckEmptyMasu() {
 	logger := GetLogger()
-	empty_masu := make([]TPosition, 51)
+	empty_masu := make([]TPosition, 81)
 	fu_drop_sente := make([]byte, 0)
 	fu_drop_gote := make([]byte, 0)
 	var x, y byte = 1, 1
