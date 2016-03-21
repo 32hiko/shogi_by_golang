@@ -55,6 +55,7 @@ func NewBan() *TBan {
 		GoteMochigoma:  NewMochigoma(),
 		Teban:          &teban,
 		Tesuu:          &tesuu,
+		LastMoveTo:     nil,
 	}
 	return &ban
 }

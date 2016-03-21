@@ -159,11 +159,14 @@ func GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 	current_max := -81
 
 	// 最終手に反応するための準備
-	last_move_masu := ban.AllMasu[*(ban.LastMoveTo)]
-	last_move_koma_moves := ban.AllMoves[last_move_masu.KomaId]
 	last_move_map := make(map[TPosition]string)
-	for _, move := range last_move_koma_moves.Map {
-		last_move_map[move.ToPosition] = ""
+	if ban.LastMoveTo != nil {
+		logger.Trace("[MainPlayer] LastMoveTo is: " + s(*(ban.LastMoveTo)))
+		last_move_masu := ban.AllMasu[*(ban.LastMoveTo)]
+		last_move_koma_moves := ban.AllMoves[last_move_masu.KomaId]
+		for _, move := range last_move_koma_moves.Map {
+			last_move_map[move.ToPosition] = ""
+		}
 	}
 
 	var current_move_key byte = 0
@@ -202,7 +205,12 @@ func GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 			escape_point = 100
 		}
 
-		count := masu_count + komadoku_point + tada_point + escape_point
+		forward_point := 0
+		if move.IsForward(teban) {
+			forward_point = 100
+		}
+
+		count := masu_count + komadoku_point + tada_point + escape_point + forward_point
 		if current_max < count {
 			logger.Trace("[MainPlayer] count: " + s(count))
 			current_max = count

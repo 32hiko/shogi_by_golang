@@ -93,7 +93,6 @@ func (move TMove) CanPromote(teban TTeban) (bool, *TMove) {
 	}
 	return can_promote, promote_move
 }
-
 func (move TMove) GetUSIMoveString() string {
 	from := move.FromPosition
 	to := move.ToPosition
@@ -107,6 +106,15 @@ func (move TMove) GetUSIMoveString() string {
 			return_str += "+"
 		}
 		return return_str
+	}
+}
+
+func (move TMove) IsForward(teban TTeban) bool {
+	move_vector := move.ToPosition - move.FromPosition
+	if teban {
+		return imag(move_vector) < 0
+	} else {
+		return imag(move_vector) > 0
 	}
 }
 
