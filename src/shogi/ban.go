@@ -679,12 +679,23 @@ func (ban *TBan) ApplyMove(usi_move string) {
 
 	// 最後の手を保存しておく
 	ban.LastMoveTo = &to
+	// 前に生成した、打つ手を全部リセットする。
+	ban.ResetDropMoves()
+	// 持ち駒がないなら、これを省略する。
 	// 駒を打つ手を生成するために、空いているマスや二歩のチェックをする
 	ban.CheckEmptyMasu()
 	// 打つ手を生成する
 	ban.CreateAllMochigomaMoves()
 	// 指し手の反映が終わり、相手の手番に
 	*(ban.Teban) = !*(ban.Teban)
+}
+
+func (ban TBan) ResetDropMoves() {
+	for koma_id, koma := range ban.AllKoma {
+		if koma.Position == Mochigoma {
+			ban.AllMoves[koma_id] = NewMoves()
+		}
+	}
 }
 
 func (ban *TBan) CheckEmptyMasu() {
@@ -704,6 +715,7 @@ func (ban *TBan) CheckEmptyMasu() {
 			if masu.KomaId == 0 {
 				// 空いたマスを保存
 				empty_masu = append(empty_masu, pos)
+				// logger.Trace("CheckEmptyMasu append. pos: " + s(pos))
 			} else {
 				koma := ban.AllKoma[masu.KomaId]
 				if koma.Position != pos {

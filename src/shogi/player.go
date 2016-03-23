@@ -272,6 +272,7 @@ func MergeMoves(moves *map[TKomaId]*TMoves, tegoma *(map[TKomaId]*TKoma), ban *T
 }
 
 func RespondOute(ban *TBan, koma_moves *map[TKomaId]*TMoves, jigyoku *TKoma, oute_kiki *map[TKomaId]TKiki, all_moves *map[byte]*TMove) {
+	logger := GetLogger()
 	// 玉が逃げる手
 	for _, move := range (*koma_moves)[jigyoku.Id].Map {
 		AddMove(all_moves, move)
@@ -285,6 +286,7 @@ func RespondOute(ban *TBan, koma_moves *map[TKomaId]*TMoves, jigyoku *TKoma, out
 				for _, move := range moves.Map {
 					if move.ToPosition == target_koma.Position {
 						AddMove(all_moves, move)
+						logger.Trace("[MainPlayer] RespondOute move: " + move.Display())
 					}
 				}
 			}
@@ -307,104 +309,4 @@ func RespondOute(ban *TBan, koma_moves *map[TKomaId]*TMoves, jigyoku *TKoma, out
 			}
 		}
 	}
-}
-
-/**
- * 利きに反応するようにしてみたが、いちいち当たった駒が逃げようとするも逃げられないので弱くなった。サンプルとして保存しておく。
- **/
-func (player TRandomPlayer) SearchSample(ban *TBan) string {
-	logger := GetLogger()
-	teban := *(ban.Teban)
-	// logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " +s(teban))
-	tegoma := ban.GetTebanKoma(teban)
-
-	// 自玉に王手がかかっているかどうかチェックする
-	var oute_kiki *map[TKomaId]TKiki
-	var gyoku_id TKomaId
-	gyoku_map := ban.FindKoma(teban, Gyoku)
-	for _, gyoku := range *gyoku_map {
-		// 1個しかないのにforを使う強引実装
-		gyoku_id = gyoku.Id
-		masu := ban.AllMasu[gyoku.Position]
-		oute_kiki = masu.GetAiteKiki(teban)
-	}
-
-	all_moves := make(map[byte]*TMove)
-	if len(*oute_kiki) > 0 {
-		// 王手を回避する
-		// 玉が逃げる手
-		for _, move := range ban.AllMoves[gyoku_id].Map {
-			AddMove(&all_moves, move)
-		}
-		// 王手かけてる駒を取る手
-		if len(*oute_kiki) == 1 {
-			// 王手かけてる駒を取る手を探す
-			for target_id, _ := range *oute_kiki {
-				// 1個しかないのにforを使う強引実装
-				target_koma := ban.AllKoma[target_id]
-				for koma_id, _ := range *tegoma {
-					for _, move := range ban.AllMoves[koma_id].Map {
-						if move.ToPosition == target_koma.Position {
-							AddMove(&all_moves, move)
-						}
-					}
-				}
-			}
-		}
-		// TODO:合い駒
-	} else {
-		aimed_koma := make(map[TKomaId]*TKoma)
-		// 今までどおり全部の手からランダム
-		for koma_id, _ := range *tegoma {
-			// logger.Trace("[RandomPlayer] koma_id: " + s(koma_id))
-			koma := ban.AllKoma[koma_id]
-			masu := ban.AllMasu[koma.Position]
-			aite_kiki := masu.GetAiteKiki(teban)
-			jibun_kiki := masu.GetKiki(teban)
-			if len(*aite_kiki) > len(*jibun_kiki) {
-				logger.Trace(koma.Display() + " is aimed.")
-				aimed_koma[koma_id] = koma
-			}
-		}
-		if len(aimed_koma) > 0 {
-			for koma_id, _ := range aimed_koma {
-				for _, move := range ban.AllMoves[koma_id].Map {
-					// 相手の利きが上回るマスには進まないでみる
-					saki_masu := ban.AllMasu[move.ToPosition]
-					aite_kiki := saki_masu.GetAiteKiki(teban)
-					jibun_kiki := saki_masu.GetKiki(teban)
-					if len(*aite_kiki) > len(*jibun_kiki) {
-						logger.Trace("cut move [" + s(move.FromPosition) + " to " + s(move.ToPosition) + "]")
-					} else {
-						AddMove(&all_moves, move)
-					}
-				}
-			}
-		}
-		if len(all_moves) == 0 {
-			for koma_id, _ := range *tegoma {
-				for _, move := range ban.AllMoves[koma_id].Map {
-					// 相手の利きが上回るマスには進まないでみる
-					saki_masu := ban.AllMasu[move.ToPosition]
-					aite_kiki := saki_masu.GetAiteKiki(teban)
-					jibun_kiki := saki_masu.GetKiki(teban)
-					if len(*aite_kiki) > len(*jibun_kiki) {
-						logger.Trace("cut move [" + s(move.FromPosition) + " to " + s(move.ToPosition) + "]")
-					} else {
-						AddMove(&all_moves, move)
-					}
-				}
-			}
-		}
-	}
-
-	moves_count := len(all_moves)
-	logger.Trace("[RandomPlayer] moves: " + s(moves_count))
-	if moves_count == 0 {
-		return "resign"
-	}
-	rand.Seed(time.Now().UnixNano())
-	random_index := rand.Intn(len(all_moves))
-	random_move := all_moves[byte(random_index)]
-	return random_move.GetUSIMoveString()
 }
