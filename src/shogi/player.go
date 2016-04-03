@@ -128,10 +128,14 @@ func GetMaxKikiMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 }
 
 type TMainPlayer struct {
+	Joseki *TJoseki
 }
 
 func NewMainPlayer() *TMainPlayer {
-	player := TMainPlayer{}
+	joseki := NewJoseki()
+	player := TMainPlayer{
+		Joseki: joseki,
+	}
 	return &player
 }
 
@@ -148,11 +152,11 @@ func (player TMainPlayer) Search(ban *TBan) string {
 		return "resign"
 	}
 
-	move := GetMainBestMove(ban, &all_moves)
+	move := player.GetMainBestMove(ban, &all_moves)
 	return move.GetUSIMoveString()
 }
 
-func GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
+func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	current_sfen := ban.ToSFEN()
@@ -169,11 +173,28 @@ func GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 		}
 	}
 
+	// デバッグ
+	logger.Trace("[MainPlayer] joseki length: " + s(len(player.Joseki.FixOpening)))
+	for k, v := range player.Joseki.FixOpening {
+		logger.Trace("[MainPlayer] k: " + s(k) + " v: " + v.GetUSIMoveString())
+	}
+	fix_move, fix_move_exists := player.Joseki.FixOpening[*(ban.Tesuu)+1]
+	var fix_move_string string = ""
+	if fix_move_exists {
+		fix_move_string = fix_move.GetUSIMoveString()
+		logger.Trace("[MainPlayer] fix_move_string is: " + fix_move_string)
+	}
+
 	var current_move_key byte = 0
 	for key, move := range *all_moves {
-		// 実際に動かしてみる
 		new_ban := FromSFEN(current_sfen)
-		new_ban.ApplyMove(move.GetUSIMoveString())
+		move_string := move.GetUSIMoveString()
+		if fix_move_string == move_string {
+			return (*all_moves)[key]
+		}
+
+		// 実際に動かしてみる
+		new_ban.ApplyMove(move_string)
 
 		// 利いているマスの数の評価
 		masu_count := new_ban.CountKikiMasu(teban)
@@ -183,7 +204,7 @@ func GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 		// 駒得（1手しか読まないので駒の枚数だけ）
 		teban_koma := new_ban.GetTebanKoma(teban)
 		komadoku_point := len(*teban_koma)
-		komadoku_point *= 50
+		komadoku_point *= 100
 
 		// タダ捨てを抑止したい
 		// 単純に利きの数だけだと、自分の駒の利いてる範囲でうろつくだけになる。タダの地点だけマイナスするほうがよさそう
