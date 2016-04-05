@@ -1161,51 +1161,54 @@ func (ban TBan) Display() string {
 	}
 	str += "\n"
 	// display move
-	var k TKomaId = 1
-	for ; k <= 40; k++ {
-		koma := ban.AllKoma[k]
-		str += koma.Display()
-		str += " id:"
-		str += s(koma.Id)
-		str += ", position:"
-		str += s(koma.Position)
-		str += ", move:"
-		if koma.Position.IsValidMove() {
-			moves := ban.AllMoves[koma.Id]
-			for _, move := range moves.Map {
-				str += s(move.ToPosition)
-				if move.Promote {
-					str += "+"
+	var debug bool = false
+	if debug {
+		var k TKomaId = 1
+		for ; k <= 40; k++ {
+			koma := ban.AllKoma[k]
+			str += koma.Display()
+			str += " id:"
+			str += s(koma.Id)
+			str += ", position:"
+			str += s(koma.Position)
+			str += ", move:"
+			if koma.Position.IsValidMove() {
+				moves := ban.AllMoves[koma.Id]
+				for _, move := range moves.Map {
+					str += s(move.ToPosition)
+					if move.Promote {
+						str += "+"
+					}
+					str += ", "
 				}
-				str += ", "
-			}
-		}
-		str += "\n"
-	}
-	// display kiki
-	var xx, yy byte = 9, 1
-	for yy <= 9 {
-		xx = 9
-		for xx >= 1 {
-			pos := Bytes2TPosition(xx, yy)
-			str += "masu: "
-			str += s(pos)
-			str += " kiki: "
-			masu := ban.AllMasu[pos]
-			for k, v := range *(masu.SenteKiki) {
-				str += ban.AllKoma[k].Display()
-				str += "(" + s(v) + ")"
-				str += ", "
-			}
-			for k, v := range *(masu.GoteKiki) {
-				str += ban.AllKoma[k].Display()
-				str += "(" + s(v) + ")"
-				str += ", "
 			}
 			str += "\n"
-			xx--
 		}
-		yy++
+		// display kiki
+		var xx, yy byte = 9, 1
+		for yy <= 9 {
+			xx = 9
+			for xx >= 1 {
+				pos := Bytes2TPosition(xx, yy)
+				str += "masu: "
+				str += s(pos)
+				str += " kiki: "
+				masu := ban.AllMasu[pos]
+				for k, v := range *(masu.SenteKiki) {
+					str += ban.AllKoma[k].Display()
+					str += "(" + s(v) + ")"
+					str += ", "
+				}
+				for k, v := range *(masu.GoteKiki) {
+					str += ban.AllKoma[k].Display()
+					str += "(" + s(v) + ")"
+					str += ", "
+				}
+				str += "\n"
+				xx--
+			}
+			yy++
+		}
 	}
 	return str
 }

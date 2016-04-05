@@ -204,7 +204,7 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove)
 		// 駒得（1手しか読まないので駒の枚数だけ）
 		teban_koma := new_ban.GetTebanKoma(teban)
 		komadoku_point := len(*teban_koma)
-		komadoku_point *= 100
+		komadoku_point *= 200
 
 		// タダ捨てを抑止したい
 		// 単純に利きの数だけだと、自分の駒の利いてる範囲でうろつくだけになる。タダの地点だけマイナスするほうがよさそう
@@ -215,7 +215,7 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove)
 		if tada_point < 0 {
 			tada_point *= 200
 		} else {
-			tada_point *= 10
+			tada_point *= 0
 		}
 
 		// 相手の手に反応するため、最後の手の利きを重く捉える
@@ -223,7 +223,8 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove)
 		_, ok := last_move_map[move.FromPosition]
 		escape_point := 0
 		if ok {
-			escape_point = 100
+			moves := new_ban.AllMoves[move.FromId]
+			escape_point = len(moves.Map) * 20
 		}
 
 		forward_point := 0
@@ -232,8 +233,8 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove)
 		}
 
 		count := masu_count + komadoku_point + tada_point + escape_point + forward_point
+		logger.Trace("[MainPlayer] count: " + s(count))
 		if current_max < count {
-			logger.Trace("[MainPlayer] count: " + s(count))
 			current_max = count
 			current_move_key = key
 		}
