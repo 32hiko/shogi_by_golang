@@ -28,3 +28,11 @@ func TestCountKikiMasu(t *testing.T) {
 	}
 	p("TestCountKiki")
 }
+
+func TestAnalyze(t *testing.T) {
+	ban1 := CreateInitialState()
+	result := ban1.Analyze()
+	p("Sente:kikiMasu: " + s(result["Sente:kikiMasu"]))
+	p("Gote:kikiMasu: " + s(result["Gote:kikiMasu"]))
+	p("TestAnalyze")
+}

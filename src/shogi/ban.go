@@ -1127,6 +1127,23 @@ func (ban TBan) CountKikiMasu(teban TTeban) int {
 	return count
 }
 
+func (ban TBan) Analyze() map[string]int {
+	var result = make(map[string]int)
+	result["Sente:kikiMasu"] = 0
+	result["Gote:kikiMasu"] = 0
+	for _, masu := range ban.AllMasu {
+		sente_kiki := masu.GetKiki(Sente)
+		gote_kiki := masu.GetKiki(Gote)
+		if len(*sente_kiki) > 0 {
+			result["Sente:kikiMasu"]++
+		}
+		if len(*gote_kiki) > 0 {
+			result["Gote:kikiMasu"]++
+		}
+	}
+	return result
+}
+
 func (ban TBan) Display() string {
 	var str string = ""
 	// display ban
