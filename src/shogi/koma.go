@@ -25,6 +25,14 @@ const (
 	Gote  TTeban = false
 )
 
+func tebanString(teban TTeban) string {
+	if teban == Sente {
+		return "Sente"
+	} else {
+		return "Gote"
+	}
+}
+
 var teban_map = map[TTeban]string{
 	Sente: "▲",
 	Gote:  "△",

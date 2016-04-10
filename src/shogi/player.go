@@ -152,8 +152,77 @@ func (player TMainPlayer) Search(ban *TBan) string {
 		return "resign"
 	}
 
-	move := player.GetMainBestMove(ban, &all_moves)
+	move := player.GetMainBestMove2(ban, &all_moves)
 	return move.GetUSIMoveString()
+}
+
+func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove) *TMove {
+	logger := GetLogger()
+	teban := *(ban.Teban)
+	current_sfen := ban.ToSFEN()
+	current_max := -99999
+
+	// 最終手に反応するための準備
+	last_move_map := make(map[TPosition]string)
+	if ban.LastMoveTo != nil {
+		logger.Trace("[MainPlayer] LastMoveTo is: " + s(*(ban.LastMoveTo)))
+		last_move_masu := ban.AllMasu[*(ban.LastMoveTo)]
+		last_move_koma_moves := ban.AllMoves[last_move_masu.KomaId]
+		for _, move := range last_move_koma_moves.Map {
+			last_move_map[move.ToPosition] = ""
+		}
+	}
+
+	// デバッグ
+	logger.Trace("[MainPlayer] joseki length: " + s(len(player.Joseki.FixOpening)))
+	for k, v := range player.Joseki.FixOpening {
+		logger.Trace("[MainPlayer] k: " + s(k) + " v: " + v.GetUSIMoveString())
+	}
+	fix_move, fix_move_exists := player.Joseki.FixOpening[*(ban.Tesuu)+1]
+	var fix_move_string string = ""
+	if fix_move_exists {
+		fix_move_string = fix_move.GetUSIMoveString()
+		logger.Trace("[MainPlayer] fix_move_string is: " + fix_move_string)
+	}
+
+	var current_move_key byte = 0
+	for key, move := range *all_moves {
+		new_ban := FromSFEN(current_sfen)
+		move_string := move.GetUSIMoveString()
+		if fix_move_string != "" {
+			if fix_move_string == move_string {
+				return (*all_moves)[key]
+			} else {
+				continue
+			}
+		}
+
+		// 実際に動かしてみる
+		new_ban.ApplyMove(move_string)
+		result := new_ban.Analyze()
+		count := Evaluate(result, teban)
+
+		logger.Trace("[MainPlayer] count: " + s(count))
+		if current_max < count {
+			current_max = count
+			current_move_key = key
+		}
+	}
+	return (*all_moves)[current_move_key]
+}
+
+func Evaluate(result map[string]int, teban TTeban) int {
+	point := 0
+	point += (result["Sente:kiki"] - result["Gote:kiki"]) * 10
+	point += (result["Sente:kikiMasu"] - result["Gote:kikiMasu"]) * 10
+	point += (result["Sente:koma"] - result["Gote:koma"]) * 100
+	point += (result["Sente:himoKoma"] - result["Gote:himoKoma"]) * 100
+	point += (result["Gote:ukiKoma"] - result["Sente:ukiKoma"]) * 100
+	point += (result["Gote:atariKoma"] - result["Sente:atariKoma"]) * 100
+	if !teban {
+		point *= -1
+	}
+	return point
 }
 
 func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
