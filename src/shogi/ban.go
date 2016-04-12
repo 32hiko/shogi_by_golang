@@ -662,7 +662,7 @@ func (ban *TBan) ApplyMove(usi_move string) {
 		from := str2Position(from_str)
 		to = str2Position(to_str)
 
-		logger.Trace("from: " + s(from) + ", to: " + s(to))
+		// logger.Trace("from: " + s(from) + ", to: " + s(to))
 		// こちらのmoveを実行する
 		ban.DoMove(from, to, promote)
 	} else {
@@ -767,11 +767,8 @@ func (ban TBan) DoCreateAllMochigomaMoves(teban TTeban) {
 }
 
 func (ban TBan) CreateMochigomaMoves(koma *TKoma) *TMoves {
-	logger := GetLogger()
 	moves := NewMoves()
 	// 空いているマスを探す
-	// logger.Trace("CreateMochigomaMoves id: " + s(koma.Id) + ", empty_masu: " + s(ban.EmptyMasu))
-	logger.Trace("CreateMochigomaMoves id: " + s(koma.Id))
 	for _, pos := range ban.EmptyMasu {
 		if koma.CanMove(pos) {
 			// 歩、香、桂の場合、行き場のないマスには打てない
