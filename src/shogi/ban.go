@@ -654,7 +654,7 @@ func (ban *TBan) ApplyMove(usi_move string) {
 	// これから反映する手数
 	*(ban.Tesuu) += 1
 
-	logger := GetLogger()
+	// logger := GetLogger()
 	// 駒を打つかどうか
 	is_drop := strings.Index(from_str, "*")
 	if is_drop == -1 {
@@ -673,7 +673,7 @@ func (ban *TBan) ApplyMove(usi_move string) {
 		teban = *(ban.Teban)
 		to = str2Position(to_str)
 
-		logger.Trace("駒打: " + teban_map[teban] + disp_map[kind] + ", to: " + s(to))
+		// logger.Trace("駒打: " + teban_map[teban] + disp_map[kind] + ", to: " + s(to))
 		ban.DoDrop(teban, kind, to)
 	}
 

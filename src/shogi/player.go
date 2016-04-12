@@ -172,11 +172,6 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove
 		}
 	}
 
-	// デバッグ
-	logger.Trace("[MainPlayer] joseki length: " + s(len(player.Joseki.FixOpening)))
-	for k, v := range player.Joseki.FixOpening {
-		logger.Trace("[MainPlayer] k: " + s(k) + " v: " + v.GetUSIMoveString())
-	}
 	fix_move, fix_move_exists := player.Joseki.FixOpening[*(ban.Tesuu)+1]
 	var fix_move_string string = ""
 	if fix_move_exists {
@@ -262,7 +257,7 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove)
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	current_sfen := ban.ToSFEN()
-	current_max := -81
+	current_max := -99999
 
 	// 最終手に反応するための準備
 	last_move_map := make(map[TPosition]string)
