@@ -110,7 +110,7 @@ func (player TKikiPlayer) Search(ban *TBan) string {
 
 func GetMaxKikiMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 	logger := GetLogger()
-	current_sfen := ban.ToSFEN()
+	current_sfen := ban.ToSFEN(false)
 	current_max := -81
 	var current_move_key byte = 0
 	for key, move := range *all_moves {
@@ -159,7 +159,7 @@ func (player TMainPlayer) Search(ban *TBan) string {
 func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 	logger := GetLogger()
 	teban := *(ban.Teban)
-	current_sfen := ban.ToSFEN()
+	current_sfen := ban.ToSFEN(false)
 
 	// 最終手に反応するための準備 未使用
 	last_move_map := make(map[TPosition]string)
@@ -177,6 +177,12 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove
 	if fix_move_exists {
 		fix_move_string = fix_move.GetUSIMoveString()
 		logger.Trace("[MainPlayer] fix_move_string is: " + fix_move_string)
+	} else {
+		sfen_joseki_move, exists := player.Joseki.SFENMap[current_sfen]
+		if exists {
+			fix_move_string = sfen_joseki_move.GetUSIMoveString()
+			logger.Trace("[MainPlayer] sfen_joseki_move_string is: " + fix_move_string)
+		}
 	}
 
 	// 1手指して有力そうな数手は、相手の応手も考慮する
@@ -260,7 +266,7 @@ func Evaluate(result map[string]int, teban TTeban) int {
 func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
 	logger := GetLogger()
 	teban := *(ban.Teban)
-	current_sfen := ban.ToSFEN()
+	current_sfen := ban.ToSFEN(false)
 	current_max := -99999
 
 	// 最終手に反応するための準備 未使用

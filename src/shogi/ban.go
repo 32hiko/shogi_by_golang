@@ -76,7 +76,10 @@ func FromSFEN(sfen string) *TBan {
 	ban.SetSFENMochigoma(split_str[2])
 
 	// 手数
-	tesuu, _ := strconv.Atoi(split_str[3])
+	tesuu := 0
+	if len(split_str) > 3 {
+		tesuu, _ = strconv.Atoi(split_str[3])
+	}
 	*(ban.Tesuu) = tesuu
 
 	p("teban: " + s(teban))
@@ -84,7 +87,7 @@ func FromSFEN(sfen string) *TBan {
 	return ban
 }
 
-func (ban TBan) ToSFEN() string {
+func (ban TBan) ToSFEN(need_tesuu bool) string {
 	// 例：lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1
 	var str string = ""
 
@@ -154,10 +157,12 @@ func (ban TBan) ToSFEN() string {
 	} else {
 		str += mochi_str
 	}
-	str += " "
 
 	// 手数
-	str += s(*(ban.Tesuu))
+	if need_tesuu {
+		str += " "
+		str += s(*(ban.Tesuu))
+	}
 	return str
 }
 
