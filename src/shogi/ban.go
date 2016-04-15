@@ -1110,9 +1110,9 @@ func (ban TBan) FindMochiKoma(teban TTeban, kind TKind) *TKoma {
 	return found
 }
 
-func AddMove(moves *map[byte]*TMove, move *TMove) {
+func AddMove(moves *map[int]*TMove, move *TMove) {
 	// logger := GetLogger()
-	var i byte = 0
+	i := 0
 	for ; ; i++ {
 		_, exists := (*moves)[i]
 		if !exists {

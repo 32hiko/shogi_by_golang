@@ -75,7 +75,7 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 	}
 	rand.Seed(time.Now().UnixNano())
 	random_index := rand.Intn(len(all_moves))
-	random_move := all_moves[byte(random_index)]
+	random_move := all_moves[random_index]
 	return random_move.GetUSIMoveString()
 }
 
@@ -108,11 +108,11 @@ func (player TKikiPlayer) Search(ban *TBan) string {
 	return move.GetUSIMoveString()
 }
 
-func GetMaxKikiMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
+func GetMaxKikiMove(ban *TBan, all_moves *map[int]*TMove) *TMove {
 	logger := GetLogger()
 	current_sfen := ban.ToSFEN(false)
-	current_max := -81
-	var current_move_key byte = 0
+	current_max := -99999
+	current_move_key := 0
 	for key, move := range *all_moves {
 		new_ban := FromSFEN(current_sfen)
 		new_ban.ApplyMove(move.GetUSIMoveString())
@@ -156,7 +156,7 @@ func (player TMainPlayer) Search(ban *TBan) string {
 	return move.GetUSIMoveString()
 }
 
-func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove) *TMove {
+func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove) *TMove {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	current_sfen := ban.ToSFEN(false)
@@ -186,7 +186,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove
 	}
 
 	// 1手指して有力そうな数手は、相手の応手も考慮する
-	better_moves_map := make(map[int]byte)
+	better_moves_map := make(map[int]int)
 	better_moves_count := 10
 	for key, move := range *all_moves {
 		new_ban := FromSFEN(current_sfen)
@@ -221,7 +221,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove
 		better_moves_map[count] = key
 	}
 
-	var current_move_key byte = 0
+	current_move_key := 0
 	current_max := -99999
 	for score, key := range better_moves_map {
 		new_ban := FromSFEN(current_sfen)
@@ -263,7 +263,7 @@ func Evaluate(result map[string]int, teban TTeban) int {
 	return point
 }
 
-func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove) *TMove {
+func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove) *TMove {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	current_sfen := ban.ToSFEN(false)
@@ -288,7 +288,7 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove)
 		logger.Trace("[MainPlayer] fix_move_string is: " + fix_move_string)
 	}
 
-	var current_move_key byte = 0
+	current_move_key := 0
 	for key, move := range *all_moves {
 		new_ban := FromSFEN(current_sfen)
 		move_string := move.GetUSIMoveString()
@@ -309,7 +309,7 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove)
 	return (*all_moves)[current_move_key]
 }
 
-func MakeAllMoves(ban *TBan) map[byte]*TMove {
+func MakeAllMoves(ban *TBan) map[int]*TMove {
 	teban := *(ban.Teban)
 	tegoma := ban.GetTebanKoma(teban)
 	koma_moves := make(map[TKomaId]*TMoves)
@@ -326,7 +326,7 @@ func MakeAllMoves(ban *TBan) map[byte]*TMove {
 	// 3.自玉に王手がかかっているかチェックする
 	oute_kiki := ban.AllMasu[jigyoku.Position].GetAiteKiki(teban)
 
-	all_moves := make(map[byte]*TMove)
+	all_moves := make(map[int]*TMove)
 	if len(*oute_kiki) > 0 {
 		// 王手を回避する
 		RespondOute(ban, &koma_moves, jigyoku, oute_kiki, &all_moves)
@@ -360,7 +360,7 @@ func MergeMoves(moves *map[TKomaId]*TMoves, tegoma *(map[TKomaId]*TKoma), ban *T
 	}
 }
 
-func RespondOute(ban *TBan, koma_moves *map[TKomaId]*TMoves, jigyoku *TKoma, oute_kiki *map[TKomaId]TKiki, all_moves *map[byte]*TMove) {
+func RespondOute(ban *TBan, koma_moves *map[TKomaId]*TMoves, jigyoku *TKoma, oute_kiki *map[TKomaId]TKiki, all_moves *map[int]*TMove) {
 	logger := GetLogger()
 	// 玉が逃げる手
 	for _, move := range (*koma_moves)[jigyoku.Id].Map {
