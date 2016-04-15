@@ -63,14 +63,14 @@ func FromSFEN(sfen string) *TBan {
 	// 例：lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1
 	// -は両者持ち駒がない場合。ある場合は、S2Pb3pのように表記。（先手銀1歩2、後手角1歩3）最後の数字は手数。
 	split_str := strings.Split(sfen, " ")
-
-	// 盤面
 	ban := NewBan()
-	ban.PutSFENKoma(split_str[0])
 
 	// 手番
 	teban := TTeban(strings.Index("bw", split_str[1]) == 0)
 	*(ban.Teban) = teban
+
+	// 盤面
+	ban.PutSFENKoma(split_str[0])
 
 	// 持ち駒
 	ban.SetSFENMochigoma(split_str[2])
@@ -103,7 +103,14 @@ func (ban TBan) ToSFEN() string {
 					str += s(empties)
 					empties = 0
 				}
-				str += koma.GetUSIDropString()
+				k_tmp := koma.GetUSIDropString()
+				if !koma.IsSente {
+					k_tmp = strings.ToLower(k_tmp)
+				}
+				if koma.Promoted {
+					k_tmp = "+" + k_tmp
+				}
+				str += k_tmp
 			}
 			x--
 		}
@@ -666,9 +673,9 @@ func (ban *TBan) ApplyMove(usi_move string) {
 	} else {
 		// "*"を含む＝打つ。先手の銀打ちならS*,後手の銀打ちならs*で始め、打つマスの表記は同じ。
 		// のはずだが、将棋所では先後問わず駒の種類が大文字になっている模様。
-		kind, teban := str2KindAndTeban(from_str)
+		kind, _ := str2KindAndTeban(from_str)
 		// その手当て
-		teban = *(ban.Teban)
+		teban := *(ban.Teban)
 		to = str2Position(to_str)
 
 		// logger.Trace("駒打: " + teban_map[teban] + disp_map[kind] + ", to: " + s(to))
@@ -929,7 +936,7 @@ func (ban TBan) DoMove(from TPosition, to TPosition, promote bool) {
 	}
 	if move == nil {
 		// 盤と手、どちらかがおかしい
-		logger.Trace("ERROR!! no Move exists to: " + s(to))
+		logger.Trace("ERROR!! Koma at: " + s(from) + ",no Move exists to: " + s(to))
 		return
 	} else {
 		if move.ToId == 0 {

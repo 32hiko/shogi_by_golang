@@ -161,7 +161,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove
 	teban := *(ban.Teban)
 	current_sfen := ban.ToSFEN()
 
-	// 最終手に反応するための準備
+	// 最終手に反応するための準備 未使用
 	last_move_map := make(map[TPosition]string)
 	if ban.LastMoveTo != nil {
 		logger.Trace("[MainPlayer] LastMoveTo is: " + s(*(ban.LastMoveTo)))
@@ -222,6 +222,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove
 		move := (*all_moves)[key]
 		move_string := move.GetUSIMoveString()
 		logger.Trace("[MainPlayer] better move: " + move_string + ", score: " + s(score))
+		Resp("info time 0 depth 1 nodes 1 score cp 28 pv "+move_string, logger)
 		new_ban.ApplyMove(move_string)
 		next_moves := MakeAllMoves(new_ban)
 		next_best_move := player.GetMainBestMove(new_ban, &next_moves)
@@ -262,7 +263,7 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove)
 	current_sfen := ban.ToSFEN()
 	current_max := -99999
 
-	// 最終手に反応するための準備
+	// 最終手に反応するための準備 未使用
 	last_move_map := make(map[TPosition]string)
 	if ban.LastMoveTo != nil {
 		// logger.Trace("[MainPlayer] LastMoveTo is: " + s(*(ban.LastMoveTo)))
@@ -271,6 +272,7 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove)
 		for _, move := range last_move_koma_moves.Map {
 			last_move_map[move.ToPosition] = ""
 		}
+
 	}
 
 	fix_move, fix_move_exists := player.Joseki.FixOpening[*(ban.Tesuu)+1]

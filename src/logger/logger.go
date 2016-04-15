@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 	"time"
 )
@@ -10,6 +11,14 @@ type Logger struct {
 }
 
 var instance *Logger
+
+// alias
+var p = fmt.Println
+
+func Resp(str string, logger *Logger) {
+	p(str)
+	logger.Res(str)
+}
 
 func InitLogger() {
 	instance = new(Logger)

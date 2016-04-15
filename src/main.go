@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	. "logger"
 	"os"
 	. "shogi"
@@ -14,18 +13,10 @@ const PROGRAM_NAME = "HoneyWaffle"
 const PROGRAM_VERSION = "0.0.3"
 const AUTHOR = "Mitsuhiko Watanabe"
 
-// alias
-var p = fmt.Println
-
-func resp(str string, logger *Logger) {
-	p(str)
-	logger.Res(str)
-}
-
 func respUSI(logger *Logger) {
-	resp("id name "+PROGRAM_NAME+" "+PROGRAM_VERSION, logger)
-	resp("id author "+AUTHOR, logger)
-	resp("usiok", logger)
+	Resp("id name "+PROGRAM_NAME+" "+PROGRAM_VERSION, logger)
+	Resp("id author "+AUTHOR, logger)
+	Resp("usiok", logger)
 }
 
 func main() {
@@ -60,7 +51,7 @@ func main() {
 			// TODO 設定を保存する
 		case "isready":
 			master = CreateInitialState()
-			resp("readyok", logger)
+			Resp("readyok", logger)
 		case "usinewgame":
 			// TODO: モードを切り替えるべきか。
 		case "gameover":
@@ -123,19 +114,21 @@ func main() {
 				bestmove := player.Search(master)
 				if len(bestmove) < 6 {
 					master.ApplyMove(bestmove)
-					if s.Index(bestmove, "*") == 1 {
-						// 打つ手は、先後問わず駒の種類を大文字で返す仕様。
-						from := bestmove[0:2]
-						to := bestmove[2:]
-						bestmove = s.ToUpper(from) + to
-					}
+					/*
+						if s.Index(bestmove, "*") == 1 {
+							// 打つ手は、先後問わず駒の種類を大文字で返す仕様。
+							from := bestmove[0:2]
+							to := bestmove[2:]
+							bestmove = s.ToUpper(from) + to
+						}
+					*/
 					logger.Trace(master.Display())
 					logger.Trace(master.ToSFEN())
 					tesuu++
 				}
-				resp("info time 0 depth 1 nodes 1 score cp 28 pv "+bestmove, logger)
+				Resp("info time 0 depth 1 nodes 1 score cp 28 pv "+bestmove, logger)
 				bestmove_str := "bestmove " + bestmove
-				resp(bestmove_str, logger)
+				Resp(bestmove_str, logger)
 			}
 		}
 	}

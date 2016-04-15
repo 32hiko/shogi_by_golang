@@ -1,8 +1,6 @@
 package shogi
 
-import (
-	"strings"
-)
+import ()
 
 type TKomaId byte
 type TKind byte
@@ -267,12 +265,7 @@ func (koma TKoma) CanMove(to_pos TPosition) bool {
 
 func (koma TKoma) GetUSIDropString() string {
 	k := usi_drop_map[koma.Kind]
-	if !koma.IsSente {
-		k = strings.ToLower(k)
-	}
-	if koma.Promoted {
-		k = "+" + k
-	}
+	// 打つときは、駒の種類はすべて大文字で。
 	return k
 }
 
