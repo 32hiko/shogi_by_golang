@@ -181,7 +181,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove
 
 	// 1手指して有力そうな数手は、相手の応手も考慮する
 	better_moves_map := make(map[int]byte)
-	better_moves_count := 5
+	better_moves_count := 10
 	for key, move := range *all_moves {
 		new_ban := FromSFEN(current_sfen)
 		move_string := move.GetUSIMoveString()
@@ -236,7 +236,10 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[byte]*TMove
 		}
 	}
 
-	return (*all_moves)[current_move_key]
+	selected_move := (*all_moves)[current_move_key]
+	selected_move_string := selected_move.GetUSIMoveString()
+	logger.Trace("[MainPlayer] best move: " + selected_move_string)
+	return selected_move
 }
 
 func Evaluate(result map[string]int, teban TTeban) int {
@@ -287,44 +290,8 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[byte]*TMove)
 
 		// 実際に動かしてみる
 		new_ban.ApplyMove(move_string)
-
-		// 利いているマスの数の評価
-		masu_count := new_ban.CountKikiMasu(teban)
-		masu_count -= new_ban.CountKikiMasu(!teban)
-		masu_count *= 10 // 調整パラメーター
-
-		// 駒得（1手しか読まないので駒の枚数だけ）
-		teban_koma := new_ban.GetTebanKoma(teban)
-		komadoku_point := len(*teban_koma)
-		komadoku_point *= 200
-
-		// タダ捨てを抑止したい
-		// 単純に利きの数だけだと、自分の駒の利いてる範囲でうろつくだけになる。タダの地点だけマイナスするほうがよさそう
-		move_masu := new_ban.AllMasu[move.ToPosition]
-		teban_kiki := move_masu.GetKiki(teban)
-		aite_kiki := move_masu.GetAiteKiki(teban)
-		tada_point := len(*teban_kiki) - len(*aite_kiki)
-		if tada_point < 0 {
-			tada_point *= 200
-		} else {
-			tada_point *= 0
-		}
-
-		// 相手の手に反応するため、最後の手の利きを重く捉える
-		// これ入れても、変な反応をして弱くなる
-		_, ok := last_move_map[move.FromPosition]
-		escape_point := 0
-		if ok {
-			moves := new_ban.AllMoves[move.FromId]
-			escape_point = len(moves.Map) * 20
-		}
-
-		forward_point := 0
-		if move.IsForward(teban) {
-			forward_point = 100
-		}
-
-		count := masu_count + komadoku_point + tada_point + escape_point + forward_point
+		result := new_ban.Analyze()
+		count := Evaluate(result, teban)
 		// logger.Trace("[MainPlayer] count: " + s(count))
 		if current_max < count {
 			current_max = count

@@ -604,8 +604,6 @@ func (ban TBan) Create1MoveAndKiki(koma *TKoma, delta TPosition, is_far bool) ([
 					if saki.IsValidMove() {
 						saki_masu := ban.AllMasu[saki]
 						saki_masu.SaveKiki(koma.Id, koma.IsSente, *(ban.Tesuu))
-						logger := GetLogger()
-						logger.Trace("add kiki pos: " + s(saki))
 					}
 				}
 				return slice, false

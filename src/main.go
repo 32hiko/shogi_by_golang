@@ -11,7 +11,7 @@ import (
 
 // const
 const PROGRAM_NAME = "HoneyWaffle"
-const PROGRAM_VERSION = "0.0.2"
+const PROGRAM_VERSION = "0.0.3"
 const AUTHOR = "Mitsuhiko Watanabe"
 
 // alias
