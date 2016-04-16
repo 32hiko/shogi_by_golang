@@ -1154,6 +1154,12 @@ func (ban TBan) Analyze() map[string]int {
 	// あたりされてる駒の数
 	result["Sente:atariKoma"] = 0
 	result["Gote:atariKoma"] = 0
+	// 持ち駒の数
+	result["Sente:mochigomaCount"] = ban.GetMochigoma(Sente).GetTotalCount()
+	result["Gote:mochigomaCount"] = ban.GetMochigoma(Gote).GetTotalCount()
+	// TODO 持ち駒の種類、成駒の数
+	// TODO 候補手の数
+	// TODO 玉の固さ、玉の移動範囲
 	for _, masu := range ban.AllMasu {
 		sente_kiki := masu.GetKiki(Sente)
 		gote_kiki := masu.GetKiki(Gote)

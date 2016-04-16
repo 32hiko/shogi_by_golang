@@ -257,6 +257,7 @@ func Evaluate(result map[string]int, teban TTeban) int {
 	point += (result["Sente:himoKoma"] - result["Gote:himoKoma"]) * 100
 	point += (result["Gote:ukiKoma"] - result["Sente:ukiKoma"]) * 100
 	point += (result["Gote:atariKoma"] - result["Sente:atariKoma"]) * 100
+	point += (result["Sente:mochigomaCount"] - result["Gote:mochigomaCount"]) * 100
 	if !teban {
 		point *= -1
 	}
@@ -361,7 +362,7 @@ func MergeMoves(moves *map[TKomaId]*TMoves, tegoma *(map[TKomaId]*TKoma), ban *T
 }
 
 func RespondOute(ban *TBan, koma_moves *map[TKomaId]*TMoves, jigyoku *TKoma, oute_kiki *map[TKomaId]TKiki, all_moves *map[int]*TMove) {
-	logger := GetLogger()
+	// logger := GetLogger()
 	// 玉が逃げる手
 	for _, move := range (*koma_moves)[jigyoku.Id].Map {
 		AddMove(all_moves, move)
@@ -375,7 +376,7 @@ func RespondOute(ban *TBan, koma_moves *map[TKomaId]*TMoves, jigyoku *TKoma, out
 				for _, move := range moves.Map {
 					if move.ToPosition == target_koma.Position {
 						AddMove(all_moves, move)
-						logger.Trace("[MainPlayer] RespondOute move: " + move.Display())
+						// logger.Trace("[MainPlayer] RespondOute move: " + move.Display())
 					}
 				}
 			}

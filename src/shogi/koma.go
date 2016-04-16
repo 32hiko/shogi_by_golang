@@ -112,6 +112,14 @@ func NewMochigoma() *TMochigoma {
 	return &mochigoma
 }
 
+func (mochigoma TMochigoma) GetTotalCount() int {
+	count := 0
+	for _, v := range mochigoma.Map {
+		count += v
+	}
+	return count
+}
+
 type TKoma struct {
 	Id       TKomaId
 	Kind     TKind
