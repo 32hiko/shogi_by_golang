@@ -187,7 +187,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 
 	// 1手指して有力そうな数手は、相手の応手も考慮する
 	better_moves_map := make(map[int]int)
-	better_moves_count := 10
+	better_moves_count := 20
 	for key, move := range *all_moves {
 		new_ban := FromSFEN(current_sfen)
 		move_string := move.GetUSIMoveString()
@@ -222,7 +222,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 	}
 
 	current_move_key := 0
-	current_max := -99999
+	current_max := 99999
 	for score, key := range better_moves_map {
 		new_ban := FromSFEN(current_sfen)
 		move := (*all_moves)[key]
@@ -235,9 +235,9 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 		next_best_move_string := next_best_move.GetUSIMoveString()
 		new_ban.ApplyMove(next_best_move_string)
 		result := new_ban.Analyze()
-		count := Evaluate(result, teban)
+		count := Evaluate(result, !teban)
 		logger.Trace("[MainPlayer]   response: " + next_best_move_string + ", count: " + s(count))
-		if current_max < count {
+		if current_max > count {
 			current_max = count
 			current_move_key = key
 		}
@@ -254,10 +254,17 @@ func Evaluate(result map[string]int, teban TTeban) int {
 	point += (result["Sente:kiki"] - result["Gote:kiki"]) * 10
 	point += (result["Sente:kikiMasu"] - result["Gote:kikiMasu"]) * 10
 	point += (result["Sente:koma"] - result["Gote:koma"]) * 100
-	point += (result["Sente:himoKoma"] - result["Gote:himoKoma"]) * 100
-	point += (result["Gote:ukiKoma"] - result["Sente:ukiKoma"]) * 100
-	point += (result["Gote:atariKoma"] - result["Sente:atariKoma"]) * 100
-	point += (result["Sente:mochigomaCount"] - result["Gote:mochigomaCount"]) * 100
+	point += (result["Sente:himoKoma"] - result["Gote:himoKoma"]) * 10
+	point += (result["Gote:ukiKoma"] - result["Sente:ukiKoma"]) * 10
+	if teban {
+		point += (result["Gote:atariKoma"]) * 50
+		point += (result["Sente:atariKoma"]) * -200
+	} else {
+		point += (result["Sente:atariKoma"]) * 50
+		point += (result["Gote:atariKoma"]) * -200
+	}
+	point += (result["Gote:tadaKoma"] - result["Sente:tadaKoma"]) * 300
+	point += (result["Sente:mochigomaCount"] - result["Gote:mochigomaCount"]) * 200
 	if !teban {
 		point *= -1
 	}
@@ -301,7 +308,7 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove) 
 		new_ban.ApplyMove(move_string)
 		result := new_ban.Analyze()
 		count := Evaluate(result, teban)
-		// logger.Trace("[MainPlayer] count: " + s(count))
+		logger.Trace("    [MainPlayer] response: " + move_string + " count: " + s(count))
 		if current_max < count {
 			current_max = count
 			current_move_key = key

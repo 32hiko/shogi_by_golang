@@ -1154,6 +1154,9 @@ func (ban TBan) Analyze() map[string]int {
 	// あたりされてる駒の数
 	result["Sente:atariKoma"] = 0
 	result["Gote:atariKoma"] = 0
+	// あたりされた浮き駒の数
+	result["Sente:tadaKoma"] = 0
+	result["Gote:tadaKoma"] = 0
 	// 持ち駒の数
 	result["Sente:mochigomaCount"] = ban.GetMochigoma(Sente).GetTotalCount()
 	result["Gote:mochigomaCount"] = ban.GetMochigoma(Gote).GetTotalCount()
@@ -1184,6 +1187,9 @@ func (ban TBan) Analyze() map[string]int {
 				}
 				if gote_kiki_len > 0 {
 					result["Sente:atariKoma"]++
+					if sente_kiki_len == 0 {
+						result["Sente:tadaKoma"]++
+					}
 				}
 			} else {
 				result["Gote:koma"]++
@@ -1194,6 +1200,9 @@ func (ban TBan) Analyze() map[string]int {
 				}
 				if sente_kiki_len > 0 {
 					result["Gote:atariKoma"]++
+					if gote_kiki_len == 0 {
+						result["Gote:tadaKoma"]++
+					}
 				}
 			}
 		}
