@@ -223,6 +223,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 
 	current_move_key := 0
 	current_max := 99999
+	current_score := 0
 	for score, key := range better_moves_map {
 		new_ban := FromSFEN(current_sfen)
 		move := (*all_moves)[key]
@@ -240,6 +241,14 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 		if current_max > count {
 			current_max = count
 			current_move_key = key
+			current_score = score
+		} else {
+			if current_max == count {
+				if current_score < score {
+					current_move_key = key
+					current_score = score
+				}
+			}
 		}
 	}
 
