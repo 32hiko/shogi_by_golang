@@ -1160,7 +1160,10 @@ func (ban TBan) Analyze() map[string]int {
 	// 持ち駒の数
 	result["Sente:mochigomaCount"] = ban.GetMochigoma(Sente).GetTotalCount()
 	result["Gote:mochigomaCount"] = ban.GetMochigoma(Gote).GetTotalCount()
-	// TODO 持ち駒の種類、成駒の数
+	// 成り駒の数
+	result["Sente:nariKoma"] = 0
+	result["Gote:nariKoma"] = 0
+	// TODO 持ち駒の種類
 	// TODO 候補手の数
 	// TODO 玉の固さ、玉の移動範囲
 	for _, masu := range ban.AllMasu {
@@ -1191,6 +1194,9 @@ func (ban TBan) Analyze() map[string]int {
 						result["Sente:tadaKoma"]++
 					}
 				}
+				if koma.Promoted {
+					result["Sente:nariKoma"]++
+				}
 			} else {
 				result["Gote:koma"]++
 				if gote_kiki_len > 0 {
@@ -1203,6 +1209,9 @@ func (ban TBan) Analyze() map[string]int {
 					if gote_kiki_len == 0 {
 						result["Gote:tadaKoma"]++
 					}
+				}
+				if koma.Promoted {
+					result["Gote:nariKoma"]++
 				}
 			}
 		}

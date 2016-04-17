@@ -262,16 +262,17 @@ func Evaluate(result map[string]int, teban TTeban) int {
 	point := 0
 	point += (result["Sente:kiki"] - result["Gote:kiki"]) * 10
 	point += (result["Sente:kikiMasu"] - result["Gote:kikiMasu"]) * 10
-	point += (result["Sente:koma"] - result["Gote:koma"]) * 100
+	point += (result["Sente:koma"] - result["Gote:koma"]) * 500
 	point += (result["Sente:himoKoma"] - result["Gote:himoKoma"]) * 10
 	point += (result["Gote:ukiKoma"] - result["Sente:ukiKoma"]) * 10
 	if teban {
 		point += (result["Gote:atariKoma"]) * 50
-		point += (result["Sente:atariKoma"]) * -200
+		point += (result["Sente:atariKoma"]) * -300
 	} else {
 		point += (result["Sente:atariKoma"]) * 50
-		point += (result["Gote:atariKoma"]) * -200
+		point += (result["Gote:atariKoma"]) * -300
 	}
+	point += (result["Gote:nariKoma"] - result["Sente:nariKoma"]) * 200
 	point += (result["Gote:tadaKoma"] - result["Sente:tadaKoma"]) * 300
 	point += (result["Sente:mochigomaCount"] - result["Gote:mochigomaCount"]) * 200
 	if !teban {
