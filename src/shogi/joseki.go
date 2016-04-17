@@ -31,7 +31,22 @@ func CreateFixOpening() map[int]*TMove {
 func CreateSFENMap() map[string]*TMove {
 	m := make(map[string]*TMove)
 	// 後手の場合
-	// ▲2六歩 -> △3四歩
-	m["lnsgkgsnl/1r5b1/ppppppppp/9/9/7P1/PPPPPPP1P/1B5R1/LNSGKGSNL/ w -"] = NewMove(NewKoma(2, Fu, 3, 3, Gote), TPosition(complex(3, 4)), 0)
+	{
+		// ▲2六歩 -> △3四歩
+		m["lnsgkgsnl/1r5b1/ppppppppp/9/9/7P1/PPPPPPP1P/1B5R1/LNSGKGSNL/ w -"] = NewMove(NewKoma(2, Fu, 3, 3, Gote), TPosition(complex(3, 4)), 0)
+		// -> ▲2五歩 -> △3三角
+		m["lnsgkgsnl/1r5b1/pppppp1pp/6p2/7P1/9/PPPPPPP1P/1B5R1/LNSGKGSNL/ w -"] = NewMove(NewKoma(4, Kaku, 2, 2, Gote), TPosition(complex(3, 3)), 0)
+		// -> ▲7六歩 -> △4四歩
+		m["lnsgkgsnl/1r5b1/pppppp1pp/6p2/9/2P4P1/PP1PPPP1P/1B5R1/LNSGKGSNL/ w -"] = NewMove(NewKoma(4, Fu, 4, 3, Gote), TPosition(complex(4, 4)), 0)
+		// (合流) ▲2五歩 -> △3三角
+		m["lnsgkgsnl/1r5b1/ppppp2pp/5pp2/7P1/2P6/PP1PPPP1P/1B5R1/LNSGKGSNL/ w -"] = NewMove(NewKoma(6, Kaku, 2, 2, Gote), TPosition(complex(3, 3)), 0)
+		// (合流) ▲7六歩 -> △4四歩
+		m["lnsgkgsnl/1r7/ppppppbpp/6p2/7P1/2P6/PP1PPPP1P/1B5R1/LNSGKGSNL/ w -"] = NewMove(NewKoma(6, Fu, 4, 3, Gote), TPosition(complex(4, 4)), 0)
+	}
+	{
+		// ▲7六歩 -> △3四歩
+		m["lnsgkgsnl/1r5b1/ppppppppp/9/9/2P6/PP1PPPPPP/1B5R1/LNSGKGSNL/ w -"] = NewMove(NewKoma(2, Fu, 3, 3, Gote), TPosition(complex(3, 4)), 0)
+		// ▲2六歩 -> △4四歩は合流
+	}
 	return m
 }
