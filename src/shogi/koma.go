@@ -71,6 +71,17 @@ var usi_drop_map = map[TKind]string{
 	Gyoku: "K",
 }
 
+var kind_point_map = map[TKind]int{
+	Fu:    1,
+	Kyo:   3,
+	Kei:   4,
+	Gin:   5,
+	Kin:   6,
+	Kaku:  8,
+	Hi:    9,
+	Gyoku: 0,
+}
+
 // 将棋だけど東西南北で。直接画面には出ないし。
 var move_n TPosition = complex(0, -1)
 var move_s TPosition = complex(0, 1)
@@ -279,6 +290,11 @@ func (koma TKoma) GetUSIDropString() string {
 
 func (kind TKind) GetUSIKind() string {
 	return usi_drop_map[kind]
+}
+
+func (koma TKoma) GetKomaPoint() int {
+	p := kind_point_map[koma.Kind]
+	return p
 }
 
 func (position TPosition) IsValidMove() bool {

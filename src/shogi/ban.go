@@ -780,6 +780,10 @@ func (ban TBan) CreateMochigomaMoves(koma *TKoma) *TMoves {
 	moves := NewMoves()
 	// 空いているマスを探す
 	for _, pos := range ban.EmptyMasu {
+		if pos == Mochigoma {
+			// 応急処置
+			continue
+		}
 		if koma.CanMove(pos) {
 			// 歩、香、桂の場合、行き場のないマスには打てない
 			if koma.Kind == Fu {
@@ -1142,7 +1146,7 @@ func (ban TBan) Analyze() map[string]int {
 	// 利きマスの数
 	result["Sente:kikiMasu"] = 0
 	result["Gote:kikiMasu"] = 0
-	// 駒の数
+	// 駒のポイント合計
 	result["Sente:koma"] = 0
 	result["Gote:koma"] = 0
 	// ひも付き駒の数
@@ -1182,7 +1186,7 @@ func (ban TBan) Analyze() map[string]int {
 		if masu.KomaId != 0 {
 			koma := ban.AllKoma[masu.KomaId]
 			if koma.IsSente {
-				result["Sente:koma"]++
+				result["Sente:koma"] += koma.GetKomaPoint()
 				if sente_kiki_len > 0 {
 					result["Sente:himoKoma"]++
 				} else {
@@ -1198,7 +1202,7 @@ func (ban TBan) Analyze() map[string]int {
 					result["Sente:nariKoma"]++
 				}
 			} else {
-				result["Gote:koma"]++
+				result["Gote:koma"] += koma.GetKomaPoint()
 				if gote_kiki_len > 0 {
 					result["Gote:himoKoma"]++
 				} else {

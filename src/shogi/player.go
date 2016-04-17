@@ -229,7 +229,6 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 		move := (*all_moves)[key]
 		move_string := move.GetUSIMoveString()
 		logger.Trace("[MainPlayer] better move: " + move_string + ", score: " + s(score))
-		Resp("info time 0 depth 1 nodes 1 score cp 28 pv "+move_string, logger)
 		new_ban.ApplyMove(move_string)
 		next_moves := MakeAllMoves(new_ban)
 		next_best_move := player.GetMainBestMove(new_ban, &next_moves)
@@ -238,6 +237,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 		result := new_ban.Analyze()
 		count := Evaluate(result, !teban)
 		logger.Trace("[MainPlayer]   response: " + next_best_move_string + ", count: " + s(count))
+		Resp("info time 0 depth 1 nodes 1 score cp 28 pv "+move_string+" "+next_best_move_string, logger)
 		if current_max > count {
 			current_max = count
 			current_move_key = key
@@ -262,19 +262,19 @@ func Evaluate(result map[string]int, teban TTeban) int {
 	point := 0
 	point += (result["Sente:kiki"] - result["Gote:kiki"]) * 10
 	point += (result["Sente:kikiMasu"] - result["Gote:kikiMasu"]) * 10
-	point += (result["Sente:koma"] - result["Gote:koma"]) * 500
+	point += (result["Sente:koma"] - result["Gote:koma"]) * 200
 	point += (result["Sente:himoKoma"] - result["Gote:himoKoma"]) * 10
-	point += (result["Gote:ukiKoma"] - result["Sente:ukiKoma"]) * 10
+	point += (result["Gote:ukiKoma"] - result["Sente:ukiKoma"]) * 100
 	if teban {
 		point += (result["Gote:atariKoma"]) * 50
-		point += (result["Sente:atariKoma"]) * -300
+		point += (result["Sente:atariKoma"]) * -500
 	} else {
 		point += (result["Sente:atariKoma"]) * 50
-		point += (result["Gote:atariKoma"]) * -300
+		point += (result["Gote:atariKoma"]) * -500
 	}
 	point += (result["Gote:nariKoma"] - result["Sente:nariKoma"]) * 200
 	point += (result["Gote:tadaKoma"] - result["Sente:tadaKoma"]) * 300
-	point += (result["Sente:mochigomaCount"] - result["Gote:mochigomaCount"]) * 200
+	point += (result["Sente:mochigomaCount"] - result["Gote:mochigomaCount"]) * 500
 	if !teban {
 		point *= -1
 	}

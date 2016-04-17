@@ -99,6 +99,11 @@ func (move TMove) GetUSIMoveString() string {
 	// 打つ手（fromが0,0の場合）に対応する。
 	if from == Mochigoma {
 		return_str := move.Koma.GetUSIDropString() + "*" + position2str(to)
+		/*
+			if return_str[2:4] == "00" {
+				panic("00 error!!")
+			}
+		*/
 		return return_str
 	} else {
 		return_str := position2str(from) + position2str(to)
