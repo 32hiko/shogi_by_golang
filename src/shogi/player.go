@@ -232,6 +232,11 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 		new_ban.ApplyMove(move_string)
 		next_moves := MakeAllMoves(new_ban)
 		next_best_move := player.GetMainBestMove(new_ban, &next_moves)
+		if next_best_move == nil {
+			// 手がないのはつまり詰み。
+			current_move_key = key
+			break
+		}
 		next_best_move_string := next_best_move.GetUSIMoveString()
 		new_ban.ApplyMove(next_best_move_string)
 		result := new_ban.Analyze()
