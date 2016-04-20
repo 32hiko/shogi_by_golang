@@ -265,21 +265,23 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 
 func Evaluate(result map[string]int, teban TTeban) int {
 	point := 0
-	point += (result["Sente:kiki"] - result["Gote:kiki"]) * 10
-	point += (result["Sente:kikiMasu"] - result["Gote:kikiMasu"]) * 10
+	point += (result["Sente:kiki"] - result["Gote:kiki"]) * 5
+	point += (result["Sente:kikiMasu"] - result["Gote:kikiMasu"]) * 5
 	point += (result["Sente:koma"] - result["Gote:koma"]) * 200
 	point += (result["Sente:himoKoma"] - result["Gote:himoKoma"]) * 10
 	point += (result["Gote:ukiKoma"] - result["Sente:ukiKoma"]) * 100
 	if teban {
 		point += (result["Gote:atariKoma"]) * 50
-		point += (result["Sente:atariKoma"]) * -500
+		point += (result["Sente:atariKoma"]) * -300
+		point += (result["Sente:tadaKoma"]) * -300
 	} else {
 		point += (result["Sente:atariKoma"]) * 50
-		point += (result["Gote:atariKoma"]) * -500
+		point += (result["Gote:atariKoma"]) * -300
+		point += (result["Gote:tadaKoma"]) * -300
 	}
-	point += (result["Gote:nariKoma"] - result["Sente:nariKoma"]) * 200
-	point += (result["Gote:tadaKoma"] - result["Sente:tadaKoma"]) * 300
-	point += (result["Sente:mochigomaCount"] - result["Gote:mochigomaCount"]) * 500
+	point += (result["Gote:nariKoma"] - result["Sente:nariKoma"]) * 100
+	// point += (result["Gote:tadaKoma"] - result["Sente:tadaKoma"]) * 300
+	point += (result["Sente:mochigomaCount"] - result["Gote:mochigomaCount"]) * 200
 	if !teban {
 		point *= -1
 	}
