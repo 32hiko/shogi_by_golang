@@ -152,26 +152,19 @@ func (player TMainPlayer) Search(ban *TBan) (string, int) {
 		return "resign", 0
 	}
 
+	joseki_move := player.GetJosekiMove(ban, &all_moves)
+	if joseki_move != nil {
+		return joseki_move.GetUSIMoveString(), 0
+	}
 	move, score := player.GetMainBestMove2(ban, &all_moves)
 	return move.GetUSIMoveString(), score
 }
 
-func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove) (*TMove, int) {
+func (player TMainPlayer) GetJosekiMove(ban *TBan, all_moves *map[int]*TMove) *TMove {
 	logger := GetLogger()
-	teban := *(ban.Teban)
 	current_sfen := ban.ToSFEN(false)
 
-	// 最終手に反応するための準備 未使用
-	last_move_map := make(map[TPosition]string)
-	if ban.LastMoveTo != nil {
-		logger.Trace("[MainPlayer] LastMoveTo is: " + s(*(ban.LastMoveTo)))
-		last_move_masu := ban.AllMasu[*(ban.LastMoveTo)]
-		last_move_koma_moves := ban.AllMoves[last_move_masu.KomaId]
-		for _, move := range last_move_koma_moves.Map {
-			last_move_map[move.ToPosition] = ""
-		}
-	}
-
+	// 現在の局面に定跡が登録されているか確認する
 	fix_move, fix_move_exists := player.Joseki.FixOpening[*(ban.Tesuu)+1]
 	var fix_move_string string = ""
 	if fix_move_exists {
@@ -185,19 +178,31 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 		}
 	}
 
+	// 定跡手が存在する場合、（念のため）手があることを確認して返す
+	if fix_move_string != "" {
+		for key, move := range *all_moves {
+			move_string := move.GetUSIMoveString()
+			if fix_move_string == move_string {
+				return (*all_moves)[key]
+			} else {
+				continue
+			}
+		}
+	}
+	return nil
+}
+
+func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove) (*TMove, int) {
+	logger := GetLogger()
+	teban := *(ban.Teban)
+	current_sfen := ban.ToSFEN(false)
+
 	// 1手指して有力そうな数手は、相手の応手も考慮する
 	better_moves_map := make(map[int]int)
 	better_moves_count := 30
 	for key, move := range *all_moves {
 		new_ban := FromSFEN(current_sfen)
 		move_string := move.GetUSIMoveString()
-		if fix_move_string != "" {
-			if fix_move_string == move_string {
-				return (*all_moves)[key], 0
-			} else {
-				continue
-			}
-		}
 
 		// 実際に動かしてみる
 		new_ban.ApplyMove(move_string)
