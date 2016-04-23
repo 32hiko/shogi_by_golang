@@ -7,7 +7,7 @@ import (
 )
 
 type IPlayer interface {
-	Search(*TBan) string
+	Search(*TBan) (string, int)
 }
 
 func NewPlayer(name string) IPlayer {
@@ -39,7 +39,7 @@ func NewSlidePlayer() *TSlidePlayer {
 	return &player
 }
 
-func (player TSlidePlayer) Search(ban *TBan) string {
+func (player TSlidePlayer) Search(ban *TBan) (string, int) {
 	var te string
 	if *(player.i)%2 == 0 {
 		te = "8b7b"
@@ -47,7 +47,7 @@ func (player TSlidePlayer) Search(ban *TBan) string {
 		te = "7b8b"
 	}
 	*(player.i)++
-	return te
+	return te, 0
 }
 
 /*
@@ -61,7 +61,7 @@ func NewRandomPlayer() *TRandomPlayer {
 	return &player
 }
 
-func (player TRandomPlayer) Search(ban *TBan) string {
+func (player TRandomPlayer) Search(ban *TBan) (string, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
@@ -71,12 +71,12 @@ func (player TRandomPlayer) Search(ban *TBan) string {
 	moves_count := len(all_moves)
 	logger.Trace("[RandomPlayer] moves: " + s(moves_count))
 	if moves_count == 0 {
-		return "resign"
+		return "resign", 0
 	}
 	rand.Seed(time.Now().UnixNano())
 	random_index := rand.Intn(len(all_moves))
 	random_move := all_moves[random_index]
-	return random_move.GetUSIMoveString()
+	return random_move.GetUSIMoveString(), 0
 }
 
 /*
@@ -91,7 +91,7 @@ func NewKikiPlayer() *TKikiPlayer {
 	return &player
 }
 
-func (player TKikiPlayer) Search(ban *TBan) string {
+func (player TKikiPlayer) Search(ban *TBan) (string, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	logger.Trace("[KikiPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
@@ -101,11 +101,11 @@ func (player TKikiPlayer) Search(ban *TBan) string {
 	moves_count := len(all_moves)
 	logger.Trace("[KikiPlayer] moves: " + s(moves_count))
 	if moves_count == 0 {
-		return "resign"
+		return "resign", 0
 	}
 
 	move := GetMaxKikiMove(ban, &all_moves)
-	return move.GetUSIMoveString()
+	return move.GetUSIMoveString(), 0
 }
 
 func GetMaxKikiMove(ban *TBan, all_moves *map[int]*TMove) *TMove {
@@ -139,7 +139,7 @@ func NewMainPlayer() *TMainPlayer {
 	return &player
 }
 
-func (player TMainPlayer) Search(ban *TBan) string {
+func (player TMainPlayer) Search(ban *TBan) (string, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	logger.Trace("[MainPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
@@ -149,14 +149,14 @@ func (player TMainPlayer) Search(ban *TBan) string {
 	moves_count := len(all_moves)
 	logger.Trace("[MainPlayer] moves: " + s(moves_count))
 	if moves_count == 0 {
-		return "resign"
+		return "resign", 0
 	}
 
-	move := player.GetMainBestMove2(ban, &all_moves)
-	return move.GetUSIMoveString()
+	move, score := player.GetMainBestMove2(ban, &all_moves)
+	return move.GetUSIMoveString(), score
 }
 
-func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove) *TMove {
+func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove) (*TMove, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	current_sfen := ban.ToSFEN(false)
@@ -193,7 +193,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 		move_string := move.GetUSIMoveString()
 		if fix_move_string != "" {
 			if fix_move_string == move_string {
-				return (*all_moves)[key]
+				return (*all_moves)[key], 0
 			} else {
 				continue
 			}
@@ -241,8 +241,8 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 		new_ban.ApplyMove(next_best_move_string)
 		result := new_ban.Analyze()
 		count := Evaluate(result, !teban)
-		logger.Trace("[MainPlayer]   response: " + next_best_move_string + ", count: " + s(count))
-		Resp("info time 0 depth 1 nodes 1 score cp 28 pv "+move_string+" "+next_best_move_string, logger)
+		// logger.Trace("[MainPlayer]   response: " + next_best_move_string + ", count: " + s(count))
+		Resp("info time 0 depth 1 nodes 1 score cp "+s(count)+" pv "+move_string+" "+next_best_move_string, logger)
 		if current_max > count {
 			current_max = count
 			current_move_key = key
@@ -260,7 +260,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 	selected_move := (*all_moves)[current_move_key]
 	selected_move_string := selected_move.GetUSIMoveString()
 	logger.Trace("[MainPlayer] best move: " + selected_move_string)
-	return selected_move
+	return selected_move, current_score
 }
 
 func Evaluate(result map[string]int, teban TTeban) int {
@@ -325,7 +325,7 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove) 
 		new_ban.ApplyMove(move_string)
 		result := new_ban.Analyze()
 		count := Evaluate(result, teban)
-		logger.Trace("    [MainPlayer] response: " + move_string + " count: " + s(count))
+		// logger.Trace("    [MainPlayer] response: " + move_string + " count: " + s(count))
 		if current_max < count {
 			current_max = count
 			current_move_key = key

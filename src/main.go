@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	. "logger"
 	"os"
 	. "shogi"
@@ -110,14 +111,14 @@ func main() {
 					}
 				}
 			} else if s.HasPrefix(text, "go") {
-				bestmove := player.Search(master)
+				bestmove, score := player.Search(master)
 				if len(bestmove) < 6 {
 					master.ApplyMove(bestmove)
 					logger.Trace(master.Display())
 					logger.Trace(master.ToSFEN(true))
 					tesuu++
 				}
-				Resp("info time 0 depth 1 nodes 1 score cp 28 pv "+bestmove, logger)
+				Resp(("info time 0 depth 1 nodes 1 score cp " + fmt.Sprint(score) + " pv " + bestmove), logger)
 				bestmove_str := "bestmove " + bestmove
 				Resp(bestmove_str, logger)
 			}
