@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	. "logger"
 	"os"
 	. "shogi"
@@ -118,7 +117,7 @@ func main() {
 					logger.Trace(master.ToSFEN(true))
 					tesuu++
 				}
-				Resp(("info time 0 depth 1 nodes 1 score cp " + fmt.Sprint(score) + " pv " + bestmove), logger)
+				Resp(("info time 0 depth 1 nodes 1 score cp " + ToDisplayScore(score, *(master.Teban)) + " pv " + bestmove), logger)
 				bestmove_str := "bestmove " + bestmove
 				Resp(bestmove_str, logger)
 			}

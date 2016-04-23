@@ -187,7 +187,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 
 	// 1手指して有力そうな数手は、相手の応手も考慮する
 	better_moves_map := make(map[int]int)
-	better_moves_count := 10
+	better_moves_count := 30
 	for key, move := range *all_moves {
 		new_ban := FromSFEN(current_sfen)
 		move_string := move.GetUSIMoveString()
@@ -242,7 +242,7 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 		result := new_ban.Analyze()
 		count := Evaluate(result, !teban)
 		// logger.Trace("[MainPlayer]   response: " + next_best_move_string + ", count: " + s(count))
-		Resp("info time 0 depth 1 nodes 1 score cp "+s(count)+" pv "+move_string+" "+next_best_move_string, logger)
+		Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(count, teban)+" pv "+move_string+" "+next_best_move_string, logger)
 		if current_max > count {
 			current_max = count
 			current_move_key = key
@@ -423,4 +423,12 @@ func RespondOute(ban *TBan, koma_moves *map[TKomaId]*TMoves, jigyoku *TKoma, out
 			}
 		}
 	}
+}
+
+func ToDisplayScore(score int, teban TTeban) string {
+	i := score
+	if !teban {
+		i *= -1
+	}
+	return s(i)
 }
