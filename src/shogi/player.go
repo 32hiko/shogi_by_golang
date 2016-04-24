@@ -157,7 +157,7 @@ func (player TMainPlayer) Search(ban *TBan) (string, int) {
 		return joseki_move.GetUSIMoveString(), 0
 	}
 	// move, score := player.GetMainBestMove2(ban, &all_moves)
-	move, score := player.GetMainBestMove3(ban, &all_moves, 16, 1, true)
+	move, score := player.GetMainBestMove3(ban, &all_moves, 16, 3, true)
 	return move.GetUSIMoveString(), score
 }
 
@@ -243,7 +243,7 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 	current_score := 0
 	if depth >= 2 {
 		// depthが2以上なら、絞り込んだ結果を元に、相手の手番でdepth-1手先まで読む。
-		current_max := -99999
+		current_min := 99999
 		for score, key := range better_moves_map {
 			new_ban := FromSFEN(current_sfen)
 			move := (*all_moves)[key]
@@ -264,12 +264,12 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 			if is_disp {
 				Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(count, teban)+" pv "+move_string+" "+next_best_move_string, logger)
 			}
-			if current_max < count {
-				current_max = count
+			if current_min > count {
+				current_min = count
 				current_move_key = key
 				current_score = score
 			} else {
-				if current_max == count {
+				if current_min == count {
 					if current_score < score {
 						current_move_key = key
 						current_score = score
@@ -313,9 +313,9 @@ func DoEvaluate(result map[string]int) int {
 	point += result["himoKoma"] * 10
 	point += result["ukiKoma"] * -10
 	point += result["atariKoma"] * -100
-	point += result["tadaKoma"] * -300
+	point += result["tadaKoma"] * -100
 	point += result["nariKoma"] * 10
-	point += result["mochigomaCount"] * 200
+	point += result["mochigomaCount"] * 1000
 	return point
 }
 
