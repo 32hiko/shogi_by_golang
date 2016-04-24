@@ -110,6 +110,7 @@ func main() {
 					}
 				}
 			} else if s.HasPrefix(text, "go") {
+				teban := *(master.Teban)
 				bestmove, score := player.Search(master)
 				if len(bestmove) < 6 {
 					master.ApplyMove(bestmove)
@@ -117,7 +118,7 @@ func main() {
 					logger.Trace(master.ToSFEN(true))
 					tesuu++
 				}
-				Resp(("info time 0 depth 1 nodes 1 score cp " + ToDisplayScore(score, *(master.Teban)) + " pv " + bestmove), logger)
+				Resp(("info time 0 depth 1 nodes 1 score cp " + ToDisplayScore(score, teban) + " pv " + bestmove), logger)
 				bestmove_str := "bestmove " + bestmove
 				Resp(bestmove_str, logger)
 			}
