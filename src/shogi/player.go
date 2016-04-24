@@ -192,6 +192,21 @@ func (player TMainPlayer) GetJosekiMove(ban *TBan, all_moves *map[int]*TMove) *T
 	return nil
 }
 
+func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove, width int, depth int) (*TMove, int) {
+	// logger := GetLogger()
+	// teban := *(ban.Teban)
+	// current_sfen := ban.ToSFEN(false)
+
+	// 1手指して有力そうな数手は、相手の応手も考慮する
+	// better_moves_map := make(map[int]int)
+
+	// all_movesに対してEvaluateし、上位width件に絞り込む
+	// 先後を考慮して評価値を比較する必要がある。->愚直に先後で別のロジックにしちゃえばいいか？
+
+	// depthが2以上なら、絞り込んだ結果を元に、相手の手番でdepth-1手先まで読む。
+	return nil, 0
+}
+
 func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove) (*TMove, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
@@ -206,8 +221,8 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 
 		// 実際に動かしてみる
 		new_ban.ApplyMove(move_string)
-		result := new_ban.Analyze()
-		count := Evaluate(result, teban)
+		result_sente, result_gote := new_ban.Analyze()
+		count := Evaluate(result_sente, result_gote, teban)
 
 		// logger.Trace("[MainPlayer] count: " + s(count))
 		if len(better_moves_map) >= better_moves_count {
@@ -244,8 +259,8 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 		}
 		next_best_move_string := next_best_move.GetUSIMoveString()
 		new_ban.ApplyMove(next_best_move_string)
-		result := new_ban.Analyze()
-		count := Evaluate(result, !teban)
+		result_sente, result_gote := new_ban.Analyze()
+		count := Evaluate(result_sente, result_gote, !teban)
 		// logger.Trace("[MainPlayer]   response: " + next_best_move_string + ", count: " + s(count))
 		Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(count, teban)+" pv "+move_string+" "+next_best_move_string, logger)
 		if current_max > count {
@@ -268,28 +283,29 @@ func (player TMainPlayer) GetMainBestMove2(ban *TBan, all_moves *map[int]*TMove)
 	return selected_move, current_score
 }
 
-func Evaluate(result map[string]int, teban TTeban) int {
+func Evaluate(result_sente map[string]int, result_gote map[string]int, teban TTeban) int {
+	sente_point := DoEvaluate(result_sente)
+	gote_point := DoEvaluate(result_gote)
 	point := 0
-	point += (result["Sente:kiki"] - result["Gote:kiki"]) * 5
-	point += (result["Sente:kikiMasu"] - result["Gote:kikiMasu"]) * 5
-	point += (result["Sente:koma"] - result["Gote:koma"]) * 200
-	point += (result["Sente:himoKoma"] - result["Gote:himoKoma"]) * 10
-	point += (result["Gote:ukiKoma"] - result["Sente:ukiKoma"]) * 100
 	if teban {
-		point += (result["Gote:atariKoma"]) * 50
-		point += (result["Sente:atariKoma"]) * -300
-		point += (result["Sente:tadaKoma"]) * -300
+		point = sente_point - gote_point
 	} else {
-		point += (result["Sente:atariKoma"]) * 50
-		point += (result["Gote:atariKoma"]) * -300
-		point += (result["Gote:tadaKoma"]) * -300
+		point = gote_point - sente_point
 	}
-	point += (result["Gote:nariKoma"] - result["Sente:nariKoma"]) * 100
-	// point += (result["Gote:tadaKoma"] - result["Sente:tadaKoma"]) * 300
-	point += (result["Sente:mochigomaCount"] - result["Gote:mochigomaCount"]) * 200
-	if !teban {
-		point *= -1
-	}
+	return point
+}
+
+func DoEvaluate(result map[string]int) int {
+	point := 0
+	point += result["kiki"] * 5
+	point += result["kikiMasu"] * 5
+	point += result["koma"] * 100
+	point += result["himoKoma"] * 10
+	point += result["ukiKoma"] * -100
+	point += result["atariKoma"] * -200
+	point += result["tadaKoma"] * -300
+	point += result["nariKoma"] * 100
+	point += result["mochigomaCount"] * 200
 	return point
 }
 
@@ -328,8 +344,8 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove) 
 
 		// 実際に動かしてみる
 		new_ban.ApplyMove(move_string)
-		result := new_ban.Analyze()
-		count := Evaluate(result, teban)
+		result_sente, result_gote := new_ban.Analyze()
+		count := Evaluate(result_sente, result_gote, teban)
 		// logger.Trace("    [MainPlayer] response: " + move_string + " count: " + s(count))
 		if current_max < count {
 			current_max = count

@@ -1138,35 +1138,36 @@ func (ban TBan) CountKikiMasu(teban TTeban) int {
 	return count
 }
 
-func (ban TBan) Analyze() map[string]int {
-	var result = make(map[string]int)
+func (ban TBan) Analyze() (map[string]int, map[string]int) {
+	var result_sente = make(map[string]int)
+	var result_gote = make(map[string]int)
 	// 利きの数
-	result["Sente:kiki"] = 0
-	result["Gote:kiki"] = 0
+	result_sente["kiki"] = 0
+	result_gote["kiki"] = 0
 	// 利きマスの数
-	result["Sente:kikiMasu"] = 0
-	result["Gote:kikiMasu"] = 0
+	result_sente["kikiMasu"] = 0
+	result_gote["kikiMasu"] = 0
 	// 駒のポイント合計
-	result["Sente:koma"] = 0
-	result["Gote:koma"] = 0
+	result_sente["koma"] = 0
+	result_gote["koma"] = 0
 	// ひも付き駒の数
-	result["Sente:himoKoma"] = 0
-	result["Gote:himoKoma"] = 0
+	result_sente["himoKoma"] = 0
+	result_gote["himoKoma"] = 0
 	// 浮き駒の数
-	result["Sente:ukiKoma"] = 0
-	result["Gote:ukiKoma"] = 0
+	result_sente["ukiKoma"] = 0
+	result_gote["ukiKoma"] = 0
 	// あたりされてる駒の数
-	result["Sente:atariKoma"] = 0
-	result["Gote:atariKoma"] = 0
+	result_sente["atariKoma"] = 0
+	result_gote["atariKoma"] = 0
 	// あたりされた浮き駒の数
-	result["Sente:tadaKoma"] = 0
-	result["Gote:tadaKoma"] = 0
+	result_sente["tadaKoma"] = 0
+	result_gote["tadaKoma"] = 0
 	// 持ち駒の数
-	result["Sente:mochigomaCount"] = ban.GetMochigoma(Sente).GetTotalCount()
-	result["Gote:mochigomaCount"] = ban.GetMochigoma(Gote).GetTotalCount()
+	result_sente["mochigomaCount"] = ban.GetMochigoma(Sente).GetTotalCount()
+	result_gote["mochigomaCount"] = ban.GetMochigoma(Gote).GetTotalCount()
 	// 成り駒の数
-	result["Sente:nariKoma"] = 0
-	result["Gote:nariKoma"] = 0
+	result_sente["nariKoma"] = 0
+	result_gote["nariKoma"] = 0
 	// TODO 持ち駒の種類
 	// TODO 候補手の数
 	// TODO 玉の固さ、玉の移動範囲
@@ -1176,51 +1177,51 @@ func (ban TBan) Analyze() map[string]int {
 		sente_kiki_len := len(*sente_kiki)
 		gote_kiki_len := len(*gote_kiki)
 		if sente_kiki_len > 0 {
-			result["Sente:kiki"] += sente_kiki_len
-			result["Sente:kikiMasu"]++
+			result_sente["kiki"] += sente_kiki_len
+			result_sente["kikiMasu"]++
 		}
 		if gote_kiki_len > 0 {
-			result["Gote:kiki"] += gote_kiki_len
-			result["Gote:kikiMasu"]++
+			result_gote["kiki"] += gote_kiki_len
+			result_gote["kikiMasu"]++
 		}
 		if masu.KomaId != 0 {
 			koma := ban.AllKoma[masu.KomaId]
 			if koma.IsSente {
-				result["Sente:koma"] += koma.GetKomaPoint()
+				result_sente["koma"] += koma.GetKomaPoint()
 				if sente_kiki_len > 0 {
-					result["Sente:himoKoma"]++
+					result_sente["himoKoma"]++
 				} else {
-					result["Sente:ukiKoma"]++
+					result_sente["ukiKoma"]++
 				}
 				if gote_kiki_len > 0 {
-					result["Sente:atariKoma"]++
+					result_sente["atariKoma"]++
 					if sente_kiki_len == 0 {
-						result["Sente:tadaKoma"]++
+						result_sente["tadaKoma"]++
 					}
 				}
 				if koma.Promoted {
-					result["Sente:nariKoma"]++
+					result_sente["nariKoma"]++
 				}
 			} else {
-				result["Gote:koma"] += koma.GetKomaPoint()
+				result_gote["koma"] += koma.GetKomaPoint()
 				if gote_kiki_len > 0 {
-					result["Gote:himoKoma"]++
+					result_gote["himoKoma"]++
 				} else {
-					result["Gote:ukiKoma"]++
+					result_gote["ukiKoma"]++
 				}
 				if sente_kiki_len > 0 {
-					result["Gote:atariKoma"]++
+					result_gote["atariKoma"]++
 					if gote_kiki_len == 0 {
-						result["Gote:tadaKoma"]++
+						result_gote["tadaKoma"]++
 					}
 				}
 				if koma.Promoted {
-					result["Gote:nariKoma"]++
+					result_gote["nariKoma"]++
 				}
 			}
 		}
 	}
-	return result
+	return result_sente, result_gote
 }
 
 func (ban TBan) Display() string {

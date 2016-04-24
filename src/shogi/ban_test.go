@@ -31,8 +31,8 @@ func TestCountKikiMasu(t *testing.T) {
 
 func TestAnalyze(t *testing.T) {
 	ban1 := CreateInitialState()
-	result := ban1.Analyze()
-	for k, v := range result {
+	result_sente, result_gote := ban1.Analyze()
+	for k, v := range result_sente {
 		p(k + ": " + s(v))
 	}
 	p("TestAnalyze")
