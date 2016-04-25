@@ -157,7 +157,7 @@ func (player TMainPlayer) Search(ban *TBan) (string, int) {
 		return joseki_move.GetUSIMoveString(), 0
 	}
 	// move, score := player.GetMainBestMove2(ban, &all_moves)
-	move, score := player.GetMainBestMove3(ban, &all_moves, 16, 3, true)
+	move, score := player.GetMainBestMove3(ban, &all_moves, 8, 5, true)
 	return move.GetUSIMoveString(), score
 }
 
@@ -308,10 +308,10 @@ func Evaluate(result_sente map[string]int, result_gote map[string]int, teban TTe
 func DoEvaluate(result map[string]int) int {
 	point := 0
 	point += result["kiki"] * 5
-	point += result["kikiMasu"] * 5
+	point += result["kikiMasu"] * 20
 	point += result["koma"] * 100
-	point += result["himoKoma"] * 10
-	point += result["ukiKoma"] * -10
+	point += result["himoKoma"] * 5
+	point += result["ukiKoma"] * -5
 	point += result["atariKoma"] * -100
 	point += result["tadaKoma"] * -100
 	point += result["nariKoma"] * 10
