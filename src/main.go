@@ -11,7 +11,7 @@ import (
 
 // const
 const PROGRAM_NAME = "HoneyWaffle"
-const PROGRAM_VERSION = "0.0.6"
+const PROGRAM_VERSION = "0.0.7"
 const AUTHOR = "Mitsuhiko Watanabe"
 
 func respUSI(logger *Logger) {

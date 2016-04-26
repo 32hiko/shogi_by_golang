@@ -156,7 +156,7 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 	if joseki_move != nil {
 		return joseki_move.GetUSIMoveString(), 0
 	}
-	width := 8
+	width := 12
 	depth := 4
 	if ms < 180000 {
 		width = 8
