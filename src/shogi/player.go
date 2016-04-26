@@ -157,10 +157,10 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 		return joseki_move.GetUSIMoveString(), 0
 	}
 	width := 8
-	depth := 5
-	if ms < 120000 {
-		width = 999
-		depth = 1
+	depth := 4
+	if ms < 180000 {
+		width = 8
+		depth = 3
 	}
 	move, score := player.GetMainBestMove3(ban, &all_moves, width, depth, true)
 	return move.GetUSIMoveString(), score
