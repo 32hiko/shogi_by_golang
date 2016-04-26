@@ -862,8 +862,8 @@ func (ban TBan) FilterPinnedMoves(gyoku *TKoma, moves *(map[TKomaId]*TMoves)) {
 						}
 					}
 					if pinned_koma != nil {
-						logger := GetLogger()
-						logger.Trace("DoDeleteSuicideMoves pinned: " + pinned_koma.Display() + "id: " + s(pinned_koma.Id))
+						// logger := GetLogger()
+						// logger.Trace("DoDeleteSuicideMoves pinned: " + pinned_koma.Display() + "id: " + s(pinned_koma.Id))
 						pinned_moves := NewMoves()
 						for _, move := range ban.AllMoves[pinned_koma.Id].Map {
 							// ピンされている駒は、ピンしている駒を取る手か、利き筋の中でのみ移動できる。

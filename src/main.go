@@ -5,6 +5,7 @@ import (
 	. "logger"
 	"os"
 	. "shogi"
+	"strconv"
 	s "strings"
 )
 
@@ -110,8 +111,17 @@ func main() {
 					}
 				}
 			} else if s.HasPrefix(text, "go") {
+				split_text := s.Split(text, " ")
+				btime := split_text[2]
+				wtime := split_text[4]
 				teban := *(master.Teban)
-				bestmove, score := player.Search(master)
+				var ms int = 0
+				if teban {
+					ms, _ = strconv.Atoi(btime)
+				} else {
+					ms, _ = strconv.Atoi(wtime)
+				}
+				bestmove, score := player.Search(master, ms)
 				if len(bestmove) < 6 {
 					master.ApplyMove(bestmove)
 					logger.Trace(master.Display())

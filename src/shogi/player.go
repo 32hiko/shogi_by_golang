@@ -7,7 +7,7 @@ import (
 )
 
 type IPlayer interface {
-	Search(*TBan) (string, int)
+	Search(*TBan, int) (string, int)
 }
 
 func NewPlayer(name string) IPlayer {
@@ -39,7 +39,7 @@ func NewSlidePlayer() *TSlidePlayer {
 	return &player
 }
 
-func (player TSlidePlayer) Search(ban *TBan) (string, int) {
+func (player TSlidePlayer) Search(ban *TBan, ms int) (string, int) {
 	var te string
 	if *(player.i)%2 == 0 {
 		te = "8b7b"
@@ -61,7 +61,7 @@ func NewRandomPlayer() *TRandomPlayer {
 	return &player
 }
 
-func (player TRandomPlayer) Search(ban *TBan) (string, int) {
+func (player TRandomPlayer) Search(ban *TBan, ms int) (string, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
@@ -91,7 +91,7 @@ func NewKikiPlayer() *TKikiPlayer {
 	return &player
 }
 
-func (player TKikiPlayer) Search(ban *TBan) (string, int) {
+func (player TKikiPlayer) Search(ban *TBan, ms int) (string, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	logger.Trace("[KikiPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
@@ -139,7 +139,7 @@ func NewMainPlayer() *TMainPlayer {
 	return &player
 }
 
-func (player TMainPlayer) Search(ban *TBan) (string, int) {
+func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	logger.Trace("[MainPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
@@ -156,8 +156,13 @@ func (player TMainPlayer) Search(ban *TBan) (string, int) {
 	if joseki_move != nil {
 		return joseki_move.GetUSIMoveString(), 0
 	}
-	// move, score := player.GetMainBestMove2(ban, &all_moves)
-	move, score := player.GetMainBestMove3(ban, &all_moves, 8, 5, true)
+	width := 8
+	depth := 5
+	if ms < 120000 {
+		width = 999
+		depth = 1
+	}
+	move, score := player.GetMainBestMove3(ban, &all_moves, width, depth, true)
 	return move.GetUSIMoveString(), score
 }
 
@@ -196,11 +201,12 @@ func (player TMainPlayer) GetJosekiMove(ban *TBan, all_moves *map[int]*TMove) *T
 func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove, width int, depth int, is_disp bool) (*TMove, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
-	logger.Trace("[BestMove3] depth: " + s(depth))
+	// logger.Trace("[BestMove3] depth: " + s(depth))
 	current_sfen := ban.ToSFEN(false)
 
 	// 1手指して有力そうな数手は、相手の応手も考慮する
 	better_moves_map := make(map[int]int)
+	oute_map := make(map[int]int)
 
 	// all_movesに対してEvaluateし、上位width件に絞り込む。改善の余地あり
 	for key, move := range *all_moves {
@@ -236,7 +242,25 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 			}
 			better_moves_map[score] = key
 			// logger.Trace("    [MainPlayer] min: " + s(min) + " score: " + s(score))
+		} else {
+			// 王手はとりあえず読む
+			if IsOute(new_ban, !teban) {
+				_, ok := oute_map[score]
+				if ok {
+					score++
+				}
+				oute_map[score] = key
+			}
 		}
+	}
+	// 王手を候補手に追加
+	for k, v := range oute_map {
+		s := k
+		_, ok := better_moves_map[s]
+		if ok {
+			s++
+		}
+		better_moves_map[s] = v
 	}
 
 	current_move_key := 0
@@ -250,7 +274,7 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 			move_string := move.GetUSIMoveString()
 			new_ban.ApplyMove(move_string)
 			next_moves := MakeAllMoves(new_ban)
-			next_best_move, _ := player.GetMainBestMove3(new_ban, &next_moves, width /2, depth -1, false)
+			next_best_move, _ := player.GetMainBestMove3(new_ban, &next_moves, width/2, depth-1, false)
 			if next_best_move == nil {
 				// 手がないのはつまり詰み。
 				current_move_key = key
@@ -288,9 +312,15 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 			}
 		}
 	}
-	logger.Trace("[BestMove3] score: " + s(current_score))
+	// logger.Trace("[BestMove3] score: " + s(current_score))
 	selected_move := (*all_moves)[current_move_key]
 	return selected_move, current_score
+}
+
+func IsOute(ban *TBan, aite_teban TTeban) bool {
+	aite_gyoku := FindGyoku(ban, aite_teban)
+	oute_kiki := ban.AllMasu[aite_gyoku.Position].GetAiteKiki(aite_teban)
+	return len(*oute_kiki) > 0
 }
 
 func Evaluate(result_sente map[string]int, result_gote map[string]int, teban TTeban) int {
@@ -325,7 +355,7 @@ func MakeAllMoves(ban *TBan) map[int]*TMove {
 	koma_moves := make(map[TKomaId]*TMoves)
 
 	// 1.自殺手（玉）を探し、除外する
-	jigyoku := FindJiGyoku(ban, teban)
+	jigyoku := FindGyoku(ban, teban)
 	jigyoku_moves := ban.FilterSuicideMoves(jigyoku)
 	koma_moves[jigyoku.Id] = jigyoku_moves
 
@@ -351,7 +381,7 @@ func MakeAllMoves(ban *TBan) map[int]*TMove {
 	return all_moves
 }
 
-func FindJiGyoku(ban *TBan, teban TTeban) *TKoma {
+func FindGyoku(ban *TBan, teban TTeban) *TKoma {
 	var gyoku *TKoma
 	gyoku_map := ban.FindKoma(teban, Gyoku)
 	for _, g := range *gyoku_map {
