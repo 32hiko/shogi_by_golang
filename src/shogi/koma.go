@@ -77,8 +77,8 @@ var kind_point_map = map[TKind]int{
 	Kei:   4,
 	Gin:   5,
 	Kin:   6,
-	Kaku:  8,
-	Hi:    9,
+	Kaku:  12,
+	Hi:    14,
 	Gyoku: 0,
 }
 

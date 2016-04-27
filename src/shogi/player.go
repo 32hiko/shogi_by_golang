@@ -216,6 +216,10 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 		new_ban.ApplyMove(move_string)
 		result_sente, result_gote := new_ban.Analyze()
 		score := Evaluate(result_sente, result_gote, teban)
+		if move.IsForward(teban) {
+			// 前に進む手を評価する
+			score += 50
+		}
 		// logger.Trace("    [MainPlayer] move: " + move_string + " score: " + s(score))
 		if is_disp {
 			Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(score, teban)+" pv "+move_string, logger)
