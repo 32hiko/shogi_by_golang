@@ -52,6 +52,7 @@ func main() {
 			// TODO 設定を保存する
 		case "isready":
 			master = CreateInitialState()
+			tesuu = 0
 			Resp("readyok", logger)
 		case "usinewgame":
 			// TODO: モードを切り替えるべきか。
