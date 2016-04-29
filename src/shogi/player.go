@@ -3,6 +3,8 @@ package shogi
 import (
 	. "logger"
 	"math/rand"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -198,73 +200,92 @@ func (player TMainPlayer) GetJosekiMove(ban *TBan, all_moves *map[int]*TMove) *T
 	return nil
 }
 
+func GetScore(sfen string, teban TTeban, all_moves *map[int]*TMove, is_disp bool) <-chan string {
+	score_channel := make(chan string)
+
+	for key, move := range *all_moves {
+		// ゴルーチンによりマルチコアを使い、時間短縮をはかる
+		go scoreRoutine(sfen, teban, key, move, score_channel, is_disp)
+	}
+
+	return score_channel
+}
+
+func scoreRoutine(sfen string, teban TTeban, key int, move *TMove, score_channel chan string, is_disp bool) {
+	logger := GetLogger()
+	new_ban := FromSFEN(sfen)
+	move_string := move.GetUSIMoveString()
+	// 実際に動かしてみる
+	new_ban.ApplyMove(move_string)
+	result_sente, result_gote := new_ban.Analyze()
+	score := Evaluate(result_sente, result_gote, teban)
+	if move.IsForward(teban) {
+		// 前に進む手を評価する
+		score += 50
+	}
+	if is_disp {
+		Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(score, teban)+" pv "+move_string, logger)
+	}
+	resp_string := s(key) + ":" + s(score)
+	if IsOute(new_ban, !teban) {
+		resp_string += ":Oute"
+	}
+	// "key_of_all_moves:score:Oute(if oute)"
+	score_channel <- resp_string
+}
+
+func PutToMap(m *map[int]int, k int, s int, w int) {
+	// 項目が上限に達している
+	if len(*m) == w {
+		min_k := 0
+		min_s := 99999
+		// 現在の最小の項目を取得する
+		for mk, ms := range *m {
+			if ms < min_s {
+				min_k = mk
+				min_s = ms
+			}
+		}
+		// 現在の最小より新しい項目が大きい場合、入れ替えのため最小を削除
+		if min_s < s {
+			delete(*m, min_k)
+			// 項目を追加する
+			(*m)[k] = s
+		}
+	} else {
+		// 項目を追加する
+		(*m)[k] = s
+	}
+}
+
 func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove, width int, depth int, is_disp bool) (*TMove, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
-	// logger.Trace("[BestMove3] depth: " + s(depth))
 	current_sfen := ban.ToSFEN(false)
+	score_channel := GetScore(current_sfen, teban, all_moves, is_disp)
 
-	// 1手指して有力そうな数手は、相手の応手も考慮する
-	better_moves_map := make(map[int]int)
 	oute_map := make(map[int]int)
+	better_moves_map := make(map[int]int)
 
-	// all_movesに対してEvaluateし、上位width件に絞り込む。改善の余地あり
-	for key, move := range *all_moves {
-		new_ban := FromSFEN(current_sfen)
-		move_string := move.GetUSIMoveString()
-		// 実際に動かしてみる
-		new_ban.ApplyMove(move_string)
-		result_sente, result_gote := new_ban.Analyze()
-		score := Evaluate(result_sente, result_gote, teban)
-		if move.IsForward(teban) {
-			// 前に進む手を評価する
-			score += 50
-		}
-		// logger.Trace("    [MainPlayer] move: " + move_string + " score: " + s(score))
-		if is_disp {
-			Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(score, teban)+" pv "+move_string, logger)
-		}
-		// 上位width件に絞り込む
-		min := -99999
-		if len(better_moves_map) >= width {
-			temp_min := 99999
-			for c, _ := range better_moves_map {
-				if c < temp_min {
-					temp_min = c
-				}
-			}
-			min = temp_min
-		}
-		// 今保持している上位width件の評価値より高い手は保持する
-		if min < score {
-			// 保持している中で最低値を削除
-			delete(better_moves_map, min)
-			// 保存する
-			_, ok := better_moves_map[score]
-			if ok {
-				score++
-			}
-			better_moves_map[score] = key
-			// logger.Trace("    [MainPlayer] min: " + s(min) + " score: " + s(score))
+	// ゴルーチンの結果待ち
+	for i := 0; i < len(*all_moves); i++ {
+		result := <-score_channel
+		// "key_of_all_moves:score:Oute(if oute)"
+		result_arr := strings.Split(result, ":")
+		key, _ := strconv.Atoi(result_arr[0])
+		score, _ := strconv.Atoi(result_arr[1])
+		if len(result_arr) == 3 {
+			// 王手フラグあり。候補手とする
+			oute_map[key] = score
 		} else {
-			// 王手はとりあえず読む
-			if IsOute(new_ban, !teban) {
-				_, ok := oute_map[score]
-				if ok {
-					score++
-				}
-				oute_map[score] = key
-			}
+			// 上位width件だけ候補手とする
+			PutToMap(&better_moves_map, key, score, width)
 		}
 	}
+
 	// 王手を候補手に追加
-	for k, v := range oute_map {
-		s := k
-		_, ok := better_moves_map[s]
-		if ok {
-			s++
-		}
-		better_moves_map[s] = v
+	for k, s := range oute_map {
+		better_moves_map[k] = s
 	}
 
 	current_move_key := 0
@@ -273,7 +294,7 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 		// depthが2以上なら、絞り込んだ結果を元に、相手の手番でdepth-1手先まで読む。
 		current_min := 99999
 		logger.Trace("depth > 2, moves: " + s(len(better_moves_map)))
-		for score, key := range better_moves_map {
+		for key, score := range better_moves_map {
 			new_ban := FromSFEN(current_sfen)
 			move := (*all_moves)[key]
 			move_string := move.GetUSIMoveString()
