@@ -48,6 +48,10 @@ func CreateSFENMap() map[string]*TMove {
 		m["ln1gkgsnl/1r1s3b1/pppppp1pp/6p2/2P6/9/PP1PPPPPP/1B5R1/LNSGKGSNL/ b -"] = NewMove(NewKoma(5, Hi, 2, 8, Sente), TPosition(complex(7, 8)), 0)
 		// ▲7六歩 -> △3二金 -> ▲7八飛
 		m["lnsgk1snl/1r4gb1/ppppppppp/9/9/2P6/PP1PPPPPP/1B5R1/LNSGKGSNL/ b -"] = NewMove(NewKoma(3, Hi, 2, 8, Sente), TPosition(complex(7, 8)), 0)
+		// ▲7六歩 -> △3四歩 -> ▲7五歩 -> △8八角成 -> ▲同銀
+		m["lnsgkgsnl/1r7/pppppp1pp/6p2/2P6/9/PP1PPPPPP/1+b5R1/LNSGKGSNL/ b b"] = NewMove(NewKoma(5, Gin, 7, 9, Sente), TPosition(complex(8, 8)), 0)
+		// -> △4五角 -> ▲7六角
+		m["lnsgkgsnl/1r7/pppppp1pp/6p2/2P2b3/9/PP1PPPPPP/1S5R1/LN1GKGSNL/ b B"] = NewMove(NewKoma(7, Kaku, 0, 0, Sente), TPosition(complex(7, 6)), 0)
 	}
 	// 後手の場合
 	{

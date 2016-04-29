@@ -272,23 +272,23 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 	if depth >= 2 {
 		// depthが2以上なら、絞り込んだ結果を元に、相手の手番でdepth-1手先まで読む。
 		current_min := 99999
+		logger.Trace("depth > 2, moves: " + s(len(better_moves_map)))
 		for score, key := range better_moves_map {
 			new_ban := FromSFEN(current_sfen)
 			move := (*all_moves)[key]
 			move_string := move.GetUSIMoveString()
 			new_ban.ApplyMove(move_string)
+			logger.Trace("depth > 2, before GetMainBestMove3 " + move_string)
 			next_moves := MakeAllMoves(new_ban)
-			next_best_move, _ := player.GetMainBestMove3(new_ban, &next_moves, width/2, depth-1, false)
+			next_best_move, count := player.GetMainBestMove3(new_ban, &next_moves, width/2, depth-1, false)
 			if next_best_move == nil {
 				// 手がないのはつまり詰み。
 				current_move_key = key
+				current_score = -99999
 				logger.Trace("[BestMove3] tsumi: " + move_string)
 				break
 			}
 			next_best_move_string := next_best_move.GetUSIMoveString()
-			new_ban.ApplyMove(next_best_move_string)
-			result_sente, result_gote := new_ban.Analyze()
-			count := Evaluate(result_sente, result_gote, !teban)
 			if is_disp {
 				Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(count, teban)+" pv "+move_string+" "+next_best_move_string, logger)
 			}
@@ -349,7 +349,7 @@ func DoEvaluate(result map[string]int) int {
 	point += result["atariKoma"] * -100
 	point += result["tadaKoma"] * -100
 	point += result["nariKoma"] * 10
-	point += result["mochigomaCount"] * 1000
+	point += result["mochigomaCount"] * 500
 	return point
 }
 
@@ -410,16 +410,20 @@ func RespondOute(ban *TBan, koma_moves *map[TKomaId]*TMoves, jigyoku *TKoma, out
 	for _, move := range (*koma_moves)[jigyoku.Id].Map {
 		AddMove(all_moves, move)
 	}
+	teban := *(ban.Teban)
 	// 両王手でなければ、王手かけてる駒を取る手か、合い駒する
 	if len(*oute_kiki) == 1 {
 		for target_id, _ := range *oute_kiki {
 			// 1個しかないのにforを使う強引実装
 			target_koma := ban.AllKoma[target_id]
-			for _, moves := range *koma_moves {
-				for _, move := range moves.Map {
-					if move.ToPosition == target_koma.Position {
-						AddMove(all_moves, move)
-						// logger.Trace("[MainPlayer] RespondOute move: " + move.Display())
+			target_kiki := ban.AllMasu[target_koma.Position].GetAiteKiki(!teban)
+			if len(*target_kiki) > 0 {
+				for toru_id, _ := range *target_kiki {
+					// toru_koma := ban.AllKoma[toru_id]
+					for _, move := range (*koma_moves)[toru_id].Map {
+						if move.ToPosition == target_koma.Position {
+							AddMove(all_moves, move)
+						}
 					}
 				}
 			}
