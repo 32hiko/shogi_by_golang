@@ -158,13 +158,16 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 	if joseki_move != nil {
 		return joseki_move.GetUSIMoveString(), 0
 	}
-	width := 999
-	depth := 2
-	if ms < 240000 {
-		width = 999
-		depth = 2
-	}
-	move, score := player.GetMainBestMove3(ban, &all_moves, width, depth, true)
+	/*
+		width := 999
+		depth := 2
+		if ms < 240000 {
+			width = 999
+			depth = 2
+		}
+		move, score := player.GetMainBestMove3(ban, &all_moves, width, depth, true)
+	*/
+	move, score := player.GetMainBestMove4(ban, &all_moves)
 	return move.GetUSIMoveString(), score
 }
 
@@ -223,6 +226,7 @@ func scoreRoutine(sfen string, teban TTeban, key int, move *TMove, score_channel
 		// 前に進む手を評価する
 		score += 50
 	}
+	score /= 50
 	if is_disp {
 		Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(score, teban)+" pv "+move_string, logger)
 	}
@@ -234,28 +238,103 @@ func scoreRoutine(sfen string, teban TTeban, key int, move *TMove, score_channel
 	score_channel <- resp_string
 }
 
-func PutToMap(m *map[int]int, k int, s int, w int) {
-	// 項目が上限に達している
-	if len(*m) == w {
-		min_k := 0
-		min_s := 99999
-		// 現在の最小の項目を取得する
-		for mk, ms := range *m {
-			if ms < min_s {
-				min_k = mk
-				min_s = ms
+type TNodeScore struct {
+	Key       int
+	Moves     string
+	Score     int
+	RespScore int
+}
+
+func NewNodeScore(key int, moves string, score int, resp_score int) *TNodeScore {
+	node_score := TNodeScore{
+		Key:       key,
+		Moves:     moves,
+		Score:     score,
+		RespScore: resp_score,
+	}
+	return &node_score
+}
+
+func (player TMainPlayer) GetMainBestMove4(ban *TBan, all_moves *map[int]*TMove) (*TMove, int) {
+	logger := GetLogger()
+	teban := *(ban.Teban)
+	current_sfen := ban.ToSFEN(false)
+
+	// 現局面から、自分の全候補手を評価
+	score_channel := GetScore(current_sfen, teban, all_moves, true)
+	move_key_score_map := make(map[int]int)
+	// ゴルーチンの結果待ち
+	for i := 0; i < len(*all_moves); i++ {
+		result := <-score_channel
+		// "key_of_all_moves:score:Oute(if oute)"
+		result_arr := strings.Split(result, ":")
+		key, _ := strconv.Atoi(result_arr[0])
+		score, _ := strconv.Atoi(result_arr[1])
+		move_key_score_map[key] = score
+	}
+
+	node_score_map := make(map[int]*TNodeScore)
+	for key, score := range move_key_score_map {
+		next_ban := FromSFEN(current_sfen)
+		move := (*all_moves)[key]
+		move_string := move.GetUSIMoveString()
+		next_ban.ApplyMove(move_string)
+		next_moves := MakeAllMoves(next_ban)
+		if len(next_moves) == 0 {
+			// 相手の手がないなら詰み（一手詰み）
+			return (*all_moves)[key], 99999
+		}
+		next_sfen := next_ban.ToSFEN(false)
+		// 自分の候補手を指した後の局面から、相手の全候補手を評価
+		next_score_channel := GetScore(next_sfen, !teban, &next_moves, false)
+		next_ks_map := make(map[int]int)
+		// ゴルーチンの結果待ち
+		for i := 0; i < len(next_moves); i++ {
+			result := <-next_score_channel
+			// "key_of_all_moves:score:Oute(if oute)"
+			result_arr := strings.Split(result, ":")
+			key, _ := strconv.Atoi(result_arr[0])
+			score, _ := strconv.Atoi(result_arr[1])
+			next_ks_map[key] = score
+		}
+		// next_ks_mapから、最大の評価値の手を取得する
+		resp_score := -99999
+		resp_key := 0
+		for k, s := range next_ks_map {
+			if resp_score < s {
+				resp_score = s
+				resp_key = k
 			}
 		}
-		// 現在の最小より新しい項目が大きい場合、入れ替えのため最小を削除
-		if min_s < s {
-			delete(*m, min_k)
-			// 項目を追加する
-			(*m)[k] = s
+		// TNodeScoreに保存する
+		if resp_key != 0 {
+			next_move := next_moves[resp_key].GetUSIMoveString()
+			moves_string := move_string + " " + next_move
+			ns := NewNodeScore(key, moves_string, score, resp_score)
+			node_score_map[key] = ns
 		}
-	} else {
-		// 項目を追加する
-		(*m)[k] = s
 	}
+
+	// TNodeScoreのうち、一部をさらに読む
+	// TNodeScoreのうち、RespScoreが最小の手を取得し、返す
+	return_score := 99999
+	return_key := 0
+	for key, entry := range node_score_map {
+		Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(entry.RespScore, teban)+" pv "+entry.Moves, logger)
+		if return_score > entry.RespScore {
+			return_score = entry.RespScore
+			return_key = key
+		} else {
+			if return_score == entry.RespScore {
+				return_org_score := node_score_map[return_key].Score
+				if return_org_score < entry.Score {
+					return_score = entry.RespScore
+					return_key = key
+				}
+			}
+		}
+	}
+	return (*all_moves)[return_key], node_score_map[return_key].Score
 }
 
 func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove, width int, depth int, is_disp bool) (*TMove, int) {
@@ -345,6 +424,30 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 	return selected_move, current_score
 }
 
+func PutToMap(m *map[int]int, k int, s int, w int) {
+	// 項目が上限に達している
+	if len(*m) == w {
+		min_k := 0
+		min_s := 99999
+		// 現在の最小の項目を取得する
+		for mk, ms := range *m {
+			if ms < min_s {
+				min_k = mk
+				min_s = ms
+			}
+		}
+		// 現在の最小より新しい項目が大きい場合、入れ替えのため最小を削除
+		if min_s < s {
+			delete(*m, min_k)
+			// 項目を追加する
+			(*m)[k] = s
+		}
+	} else {
+		// 項目を追加する
+		(*m)[k] = s
+	}
+}
+
 func IsOute(ban *TBan, aite_teban TTeban) bool {
 	aite_gyoku := FindGyoku(ban, aite_teban)
 	oute_kiki := ban.AllMasu[aite_gyoku.Position].GetAiteKiki(aite_teban)
@@ -374,7 +477,7 @@ func DoEvaluate(result map[string]int) int {
 	point += result["tadaKoma"] * -100
 	point += result["nariKoma"] * 10
 	point += result["mochigomaCount"] * 1000
-	return point / 50
+	return point
 }
 
 func MakeAllMoves(ban *TBan) map[int]*TMove {
