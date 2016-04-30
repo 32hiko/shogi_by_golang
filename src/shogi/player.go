@@ -158,11 +158,11 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 	if joseki_move != nil {
 		return joseki_move.GetUSIMoveString(), 0
 	}
-	width := 12
-	depth := 4
-	if ms < 180000 {
-		width = 8
-		depth = 3
+	width := 999
+	depth := 2
+	if ms < 240000 {
+		width = 999
+		depth = 2
 	}
 	move, score := player.GetMainBestMove3(ban, &all_moves, width, depth, true)
 	return move.GetUSIMoveString(), score
@@ -267,6 +267,7 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 	oute_map := make(map[int]int)
 	better_moves_map := make(map[int]int)
 
+	// logger.Trace("------start------")
 	// ゴルーチンの結果待ち
 	for i := 0; i < len(*all_moves); i++ {
 		result := <-score_channel
@@ -293,13 +294,14 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 	if depth >= 2 {
 		// depthが2以上なら、絞り込んだ結果を元に、相手の手番でdepth-1手先まで読む。
 		current_min := 99999
-		logger.Trace("depth > 2, moves: " + s(len(better_moves_map)))
+		// logger.Trace("depth: " + s(depth))
+		// logger.Trace("moves: " + s(len(better_moves_map)))
 		for key, score := range better_moves_map {
 			new_ban := FromSFEN(current_sfen)
 			move := (*all_moves)[key]
 			move_string := move.GetUSIMoveString()
 			new_ban.ApplyMove(move_string)
-			logger.Trace("depth > 2, before GetMainBestMove3 " + move_string)
+			// logger.Trace("before GetMainBestMove3 " + move_string)
 			next_moves := MakeAllMoves(new_ban)
 			next_best_move, count := player.GetMainBestMove3(new_ban, &next_moves, width/2, depth-1, false)
 			if next_best_move == nil {
@@ -329,7 +331,7 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 	} else {
 		// depthが1なら、上位width件の中で最高の評価値の手を返す
 		max := -99999
-		for score, key := range better_moves_map {
+		for key, score := range better_moves_map {
 			if score > max {
 				max = score
 				current_move_key = key
@@ -339,6 +341,7 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 	}
 	// logger.Trace("[BestMove3] score: " + s(current_score))
 	selected_move := (*all_moves)[current_move_key]
+	// logger.Trace("------ end ------")
 	return selected_move, current_score
 }
 
@@ -364,14 +367,14 @@ func DoEvaluate(result map[string]int) int {
 	point := 0
 	point += result["kiki"] * 5
 	point += result["kikiMasu"] * 20
-	point += result["koma"] * 100
+	point += result["koma"] * 5000
 	point += result["himoKoma"] * 5
 	point += result["ukiKoma"] * -5
 	point += result["atariKoma"] * -100
 	point += result["tadaKoma"] * -100
 	point += result["nariKoma"] * 10
-	point += result["mochigomaCount"] * 500
-	return point
+	point += result["mochigomaCount"] * 1000
+	return point / 50
 }
 
 func MakeAllMoves(ban *TBan) map[int]*TMove {
