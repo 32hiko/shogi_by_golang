@@ -159,7 +159,17 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 	if joseki_move != nil {
 		return joseki_move.GetUSIMoveString(), 0
 	}
-	move, score := player.GetMainBestMove4(ban, &all_moves, (ms < 180000))
+
+	// magic number
+	width := 999
+	depth := 999
+	if ms < 300000 {
+		depth = 2
+	}
+
+	// move, score := player.GetMainBestMove4(ban, &all_moves, (ms < 180000))
+	move, score := player.GetMainBestMove3(ban, &all_moves, width, depth, true)
+
 	return move.GetUSIMoveString(), score
 }
 
@@ -460,7 +470,22 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 			new_ban.ApplyMove(move_string)
 			// logger.Trace("before GetMainBestMove3 " + move_string)
 			next_moves := MakeAllMoves(new_ban)
-			next_best_move, count := player.GetMainBestMove3(new_ban, &next_moves, width/2, depth-1, false)
+			if len(next_moves) == 0 {
+				// 手がないので詰み。下のは読んだ先で詰みがある場合？
+				current_move_key = key
+				current_score = 99999
+				logger.Trace("[BestMove3] tsumi: " + move_string)
+				break
+			}
+			next_width := width / 2
+			if width == 999 {
+				next_width = 4
+			}
+			next_depth := depth - 1
+			if depth == 999 {
+				next_depth = 2
+			}
+			next_best_move, count := player.GetMainBestMove3(new_ban, &next_moves, next_width, next_depth, false)
 			if next_best_move == nil {
 				// 手がないのはつまり詰み。
 				current_move_key = key
