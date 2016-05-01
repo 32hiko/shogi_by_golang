@@ -3,6 +3,7 @@ package shogi
 import (
 	. "logger"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -158,16 +159,7 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 	if joseki_move != nil {
 		return joseki_move.GetUSIMoveString(), 0
 	}
-	/*
-		width := 999
-		depth := 2
-		if ms < 240000 {
-			width = 999
-			depth = 2
-		}
-		move, score := player.GetMainBestMove3(ban, &all_moves, width, depth, true)
-	*/
-	move, score := player.GetMainBestMove4(ban, &all_moves)
+	move, score := player.GetMainBestMove4(ban, &all_moves, (ms < 180000))
 	return move.GetUSIMoveString(), score
 }
 
@@ -255,7 +247,7 @@ func NewNodeScore(key int, moves string, score int, resp_score int) *TNodeScore 
 	return &node_score
 }
 
-func (player TMainPlayer) GetMainBestMove4(ban *TBan, all_moves *map[int]*TMove) (*TMove, int) {
+func (player TMainPlayer) GetMainBestMove4(ban *TBan, all_moves *map[int]*TMove, hurry bool) (*TMove, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	current_sfen := ban.ToSFEN(false)
@@ -316,6 +308,14 @@ func (player TMainPlayer) GetMainBestMove4(ban *TBan, all_moves *map[int]*TMove)
 	}
 
 	// TNodeScoreのうち、一部をさらに読む
+	if !hurry {
+		logger.Trace("before CloseUp, length: " + s(len(node_score_map)))
+		new_map := CloseUp(current_sfen, teban, &node_score_map)
+		logger.Trace("ok")
+		node_score_map = new_map
+		logger.Trace("after  CloseUp, length: " + s(len(node_score_map)))
+	}
+
 	// TNodeScoreのうち、RespScoreが最小の手を取得し、返す
 	return_score := 99999
 	return_key := 0
@@ -335,6 +335,84 @@ func (player TMainPlayer) GetMainBestMove4(ban *TBan, all_moves *map[int]*TMove)
 		}
 	}
 	return (*all_moves)[return_key], node_score_map[return_key].Score
+}
+
+func CloseUp(sfen string, teban TTeban, score_map *map[int]*TNodeScore) map[int]*TNodeScore {
+	logger := GetLogger()
+	width_max := 10
+
+	// RespScoreが小さい上位width件に絞り込む
+	var new_map map[int]*TNodeScore = nil
+	if len(*score_map) <= width_max {
+		// 件数がもともと少ないならこの工程は不要
+		new_map = *score_map
+	} else {
+		// 件数が多い場合、新しいmapに詰め替える
+		new_map = make(map[int]*TNodeScore)
+		// ソートのためのスライス
+		slice := make([]int, len(*score_map))
+		for _, v := range *score_map {
+			slice = append(slice, v.RespScore)
+		}
+		sort.Sort(sort.IntSlice(slice))
+		var border_value int = slice[width_max-1]
+		logger.Trace("slice: " + s(slice))
+		logger.Trace("border_value: " + s(border_value))
+		for k, v := range *score_map {
+			if v.RespScore <= border_value {
+				new_map[k] = v
+				logger.Trace("add key, value: " + s(k) + " " + s(v.RespScore))
+			}
+		}
+	}
+	logger.Trace("CloseUp width: " + s(len(new_map)))
+	for k, v := range new_map {
+		ban := FromSFEN(sfen)
+		moves_arr := strings.Split(v.Moves, " ")
+		ban.ApplyMove(moves_arr[0])
+		ban.ApplyMove(moves_arr[1])
+		next_moves := MakeAllMoves(ban)
+		if len(next_moves) == 0 {
+			// 手がないならこちらが詰み
+			new_v := v
+			new_v.RespScore = 99999
+			new_map[k] = new_v
+		}
+		next_sfen := ban.ToSFEN(false)
+		// 相手の候補手を指した後の局面から、自分の全候補手を評価
+		next_score_channel := GetScore(next_sfen, teban, &next_moves, false)
+		next_ks_map := make(map[int]int)
+		// ゴルーチンの結果待ち
+		for i := 0; i < len(next_moves); i++ {
+			result := <-next_score_channel
+			// "key_of_all_moves:score:Oute(if oute)"
+			result_arr := strings.Split(result, ":")
+			key, _ := strconv.Atoi(result_arr[0])
+			score, _ := strconv.Atoi(result_arr[1])
+			next_ks_map[key] = score
+		}
+		// next_ks_mapから、最大の評価値の手を取得する
+		resp_score := -99999
+		resp_key := 0
+		for k, s := range next_ks_map {
+			if resp_score < s {
+				resp_score = s
+				resp_key = k
+			}
+		}
+		// TNodeScoreに保存する
+		if resp_key != 0 {
+			next_move := next_moves[resp_key].GetUSIMoveString()
+			moves_string := v.Moves + " " + next_move
+			new_v := v
+			// 低いの優先なので反転させる
+			new_v.RespScore = -resp_score
+			new_v.Moves = moves_string
+			new_map[k] = new_v
+		}
+	}
+	logger.Trace("CloseUp final width: " + s(len(new_map)))
+	return new_map
 }
 
 func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove, width int, depth int, is_disp bool) (*TMove, int) {
