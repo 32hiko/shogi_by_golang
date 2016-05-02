@@ -1187,7 +1187,7 @@ func (ban TBan) Analyze() (map[string]int, map[string]int) {
 		if masu.KomaId != 0 {
 			koma := ban.AllKoma[masu.KomaId]
 			if koma.IsSente {
-				result_sente["koma"] += koma.GetKomaPoint()
+				// result_sente["koma"] += koma.GetKomaPoint()
 				if sente_kiki_len > 0 {
 					result_sente["himoKoma"]++
 				} else {
@@ -1203,7 +1203,7 @@ func (ban TBan) Analyze() (map[string]int, map[string]int) {
 					result_sente["nariKoma"]++
 				}
 			} else {
-				result_gote["koma"] += koma.GetKomaPoint()
+				// result_gote["koma"] += koma.GetKomaPoint()
 				if gote_kiki_len > 0 {
 					result_gote["himoKoma"]++
 				} else {
@@ -1221,7 +1221,22 @@ func (ban TBan) Analyze() (map[string]int, map[string]int) {
 			}
 		}
 	}
+	for _, koma := range ban.SenteKoma {
+		result_sente["koma"] += koma.GetKomaPoint()
+	}
+	for _, koma := range ban.GoteKoma {
+		result_gote["koma"] += koma.GetKomaPoint()
+	}
 	return result_sente, result_gote
+}
+
+func (ban TBan) IsTadaMove(move *TMove) bool {
+	koma := ban.AllKoma[move.FromId]
+	masu := ban.AllMasu[koma.Position]
+	aiteban := !(koma.IsSente)
+	jibun_kiki := masu.GetKiki(koma.IsSente)
+	aite_kiki := masu.GetKiki(aiteban)
+	return (len(*aite_kiki) > len(*jibun_kiki))
 }
 
 func (ban TBan) Display() string {

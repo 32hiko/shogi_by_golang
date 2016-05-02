@@ -231,6 +231,10 @@ func scoreRoutine(sfen string, teban TTeban, key int, move *TMove, score_channel
 		// 前に進む手を評価する
 		score += 50
 	}
+	if new_ban.IsTadaMove(move) {
+		score -= 10000
+		// logger.Trace("penalty move: " + move_string)
+	}
 	score /= 50
 	if is_disp {
 		Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(score, teban)+" pv "+move_string, logger)
@@ -561,6 +565,7 @@ func IsOute(ban *TBan, aite_teban TTeban) bool {
 }
 
 func Evaluate(result_sente map[string]int, result_gote map[string]int, teban TTeban) int {
+	// logger := GetLogger()
 	sente_point := DoEvaluate(result_sente, (teban == Sente))
 	gote_point := DoEvaluate(result_gote, (teban == Gote))
 	point := 0
@@ -569,6 +574,7 @@ func Evaluate(result_sente map[string]int, result_gote map[string]int, teban TTe
 	} else {
 		point = gote_point - sente_point
 	}
+	// logger.Trace("  Evaluate: " + s(sente_point) + "," + s(gote_point))
 	return point
 }
 
