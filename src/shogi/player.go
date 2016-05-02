@@ -162,7 +162,7 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 
 	// magic number
 	width := 999
-	depth := 999
+	depth := 3
 	if ms < 300000 {
 		depth = 2
 	}
@@ -441,6 +441,13 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 	oute_map := make(map[int]int)
 	better_moves_map := make(map[int]int)
 
+	if width == 999 {
+		width = len(*all_moves) / 2
+	}
+	if width > 50 {
+		width = 50
+	}
+
 	// logger.Trace("------start------")
 	// ゴルーチンの結果待ち
 	for i := 0; i < len(*all_moves); i++ {
@@ -463,6 +470,10 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 		better_moves_map[k] = s
 	}
 
+
+	next_width := width / 2
+	next_depth := depth - 1
+
 	current_move_key := 0
 	current_score := 0
 	if depth >= 2 {
@@ -483,14 +494,6 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 				current_score = 99999
 				logger.Trace("[BestMove3] tsumi: " + move_string)
 				break
-			}
-			next_width := width / 2
-			if width == 999 {
-				next_width = 4
-			}
-			next_depth := depth - 1
-			if depth == 999 {
-				next_depth = 2
 			}
 			next_best_move, count := player.GetMainBestMove3(new_ban, &next_moves, next_width, next_depth, false)
 			if next_best_move == nil {
