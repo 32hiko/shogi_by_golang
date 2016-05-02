@@ -294,6 +294,9 @@ func (kind TKind) GetUSIKind() string {
 
 func (koma TKoma) GetKomaPoint() int {
 	p := kind_point_map[koma.Kind]
+	if koma.Promoted {
+		p += 6
+	}
 	return p
 }
 
