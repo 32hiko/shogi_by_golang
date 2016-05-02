@@ -444,8 +444,8 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 	if width == 999 {
 		width = len(*all_moves) / 2
 	}
-	if width > 50 {
-		width = 50
+	if width > 30 {
+		width = 30
 	}
 
 	// logger.Trace("------start------")
