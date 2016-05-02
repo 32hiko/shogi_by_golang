@@ -169,6 +169,10 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 	if ms < 120000 {
 		depth = 1
 	}
+	if ms < 60000 {
+		// magic number
+		depth = 0
+	}
 
 	// move, score := player.GetMainBestMove4(ban, &all_moves, (ms < 180000))
 	move, score := player.GetMainBestMove3(ban, &all_moves, width, depth, true)
@@ -440,6 +444,11 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 
 	oute_map := make(map[int]int)
 	better_moves_map := make(map[int]int)
+
+	if depth == 0 {
+		// 緊急避難ロジック
+		return (*all_moves)[0], 28
+	}
 
 	if width == 999 {
 		width = len(*all_moves) / 2
