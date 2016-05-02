@@ -166,6 +166,9 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 	if ms < 300000 {
 		depth = 2
 	}
+	if ms < 120000 {
+		depth = 1
+	}
 
 	// move, score := player.GetMainBestMove4(ban, &all_moves, (ms < 180000))
 	move, score := player.GetMainBestMove3(ban, &all_moves, width, depth, true)
@@ -558,8 +561,8 @@ func IsOute(ban *TBan, aite_teban TTeban) bool {
 }
 
 func Evaluate(result_sente map[string]int, result_gote map[string]int, teban TTeban) int {
-	sente_point := DoEvaluate(result_sente)
-	gote_point := DoEvaluate(result_gote)
+	sente_point := DoEvaluate(result_sente, (teban == Sente))
+	gote_point := DoEvaluate(result_gote, (teban == Gote))
 	point := 0
 	if teban {
 		point = sente_point - gote_point
@@ -569,15 +572,17 @@ func Evaluate(result_sente map[string]int, result_gote map[string]int, teban TTe
 	return point
 }
 
-func DoEvaluate(result map[string]int) int {
+func DoEvaluate(result map[string]int, is_aiteban bool) int {
 	point := 0
 	point += result["kiki"] * 5
 	point += result["kikiMasu"] * 20
 	point += result["koma"] * 5000
 	point += result["himoKoma"] * 5
 	point += result["ukiKoma"] * -5
-	point += result["atariKoma"] * -100
-	point += result["tadaKoma"] * -100
+	if is_aiteban {
+		point += result["atariKoma"] * -10000
+		point += result["tadaKoma"] * -10000
+	}
 	point += result["nariKoma"] * 10
 	point += result["mochigomaCount"] * 1000
 	return point
