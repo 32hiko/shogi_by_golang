@@ -444,8 +444,8 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 	if width == 999 {
 		width = len(*all_moves) / 2
 	}
-	if width > 30 {
-		width = 30
+	if width > 32 {
+		width = 32
 	}
 
 	// logger.Trace("------start------")
@@ -470,8 +470,7 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 		better_moves_map[k] = s
 	}
 
-
-	next_width := width / 2
+	next_width := width / 4
 	next_depth := depth - 1
 
 	current_move_key := 0
