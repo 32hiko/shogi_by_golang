@@ -236,7 +236,7 @@ func scoreRoutine(sfen string, teban TTeban, key int, move *TMove, score_channel
 		score += 50
 	}
 	if new_ban.IsTadaMove(move) {
-		score -= 100000
+		// score -= 100000
 		// logger.Trace("penalty move: " + move_string)
 	}
 	score /= 50
