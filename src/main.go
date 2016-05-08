@@ -90,7 +90,7 @@ func main() {
 							continue
 						}
 						logger.Trace("to apply: " + value)
-						master.ApplyMove(value)
+						master.ApplyMove(value, true, true, true)
 						logger.Trace(master.Display())
 						tesuu++
 					}
@@ -105,7 +105,7 @@ func main() {
 							continue
 						}
 						logger.Trace("to apply: " + value)
-						master.ApplyMove(value)
+						master.ApplyMove(value, true, true, true)
 						logger.Trace(master.Display())
 						logger.Trace(master.ToSFEN(true))
 						tesuu++
@@ -124,7 +124,7 @@ func main() {
 				}
 				bestmove, score := player.Search(master, ms)
 				if len(bestmove) < 6 {
-					master.ApplyMove(bestmove)
+					master.ApplyMove(bestmove, true, true, true)
 					logger.Trace(master.Display())
 					logger.Trace(master.ToSFEN(true))
 					tesuu++

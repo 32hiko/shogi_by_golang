@@ -59,6 +59,7 @@ func NewBan() *TBan {
 	}
 	return &ban
 }
+
 func FromSFEN(sfen string) *TBan {
 	// 例：lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1
 	// -は両者持ち駒がない場合。ある場合は、S2Pb3pのように表記。（先手銀1歩2、後手角1歩3）最後の数字は手数。
@@ -85,6 +86,98 @@ func FromSFEN(sfen string) *TBan {
 	p("teban: " + s(teban))
 	p("tesuu: " + s(tesuu))
 	return ban
+}
+
+func NewBanFromSFEN(sfen string) *TBan {
+	// 例：lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1
+	// -は両者持ち駒がない場合。ある場合は、S2Pb3pのように表記。（先手銀1歩2、後手角1歩3）最後の数字は手数。
+	split_str := strings.Split(sfen, " ")
+	ban := NewBan()
+
+	// 手番
+	teban := TTeban(strings.Index("bw", split_str[1]) == 0)
+	*(ban.Teban) = teban
+
+	// 盤面
+	ban.PlaceSFENKoma(split_str[0])
+	// ※利き、合法手は生成していない。
+
+	// 持ち駒
+	ban.SetSFENMochigoma(split_str[2])
+
+	// 手数
+	tesuu := 0
+	if len(split_str) > 3 {
+		tesuu, _ = strconv.Atoi(split_str[3])
+	}
+	*(ban.Tesuu) = tesuu
+
+	p("teban: " + s(teban))
+	p("tesuu: " + s(tesuu))
+	return ban
+}
+
+func (ban TBan) PlaceSFENKoma(sfen string) {
+	arr := strings.Split(sfen, "/")
+	var y byte = 1
+	var x byte = 9
+	var koma_id TKomaId = 1
+	for _, line := range arr {
+		x = 9
+		promote := false
+		// 1文字ずつチェックする。
+		for i := 0; i < len(line); i++ {
+			char := line[i : i+1]
+			// まず数字かどうか
+			num := strings.Index("0123456789", char)
+			if num == -1 {
+				// 数字ではないので駒が存在するマス。
+				plus := strings.Index("+", char)
+				if plus == 0 {
+					// +は次の文字が成り駒であることを意味する。
+					promote = true
+					continue
+				}
+				kind, teban := str2KindAndTeban(char)
+				koma := NewKoma(koma_id, kind, x, y, teban)
+				if promote {
+					koma.Promoted = true
+					promote = false
+				}
+				ban.PlaceKoma(koma)
+				koma_id++
+				x--
+			} else {
+				// 空きマス分飛ばす
+				x -= byte(num)
+			}
+		}
+		y++
+	}
+}
+
+func (ban TBan) PlaceKoma(koma *TKoma) {
+	//logger := GetLogger()
+	//logger.Trace("PutKoma id: " + s(koma.Id))
+	// 駒が持っている位置を更新
+	ban.AllKoma[koma.Id] = koma
+
+	// ここは本来、駒の所有権が決まった時点でやる処理。初期化も、まず全部持ち駒にしてそれを打っていくのが正しい。
+	if koma.IsSente {
+		ban.SenteKoma[koma.Id] = koma
+	} else {
+		ban.GoteKoma[koma.Id] = koma
+	}
+
+	ban.AllMasu[koma.Position].KomaId = koma.Id
+
+	// 配置した駒の合法手、利きを作成
+	// ban.AllMoves[koma.Id] = ban.CreateFarMovesAndKiki(koma)
+
+	// 自マスに、他の駒からの利きとしてIdが入っている場合で、香、角、飛の場合は先の利きを止める
+	// こちらも、龍や馬の周囲に駒を打った場合、的外れな方向の手や利きを消そうとしてしまうので、作り直しとする
+	// ban.DeleteCloseMovesAndKiki(koma, Sente)
+	// ban.DeleteCloseMovesAndKiki(koma, Gote)
 }
 
 func (ban TBan) ToSFEN(need_tesuu bool) string {
@@ -646,7 +739,7 @@ func (ban TBan) CreateNMovesAndKiki(koma *TKoma, delta TPosition) []*TMove {
 }
 
 // USI形式のmoveを反映させる。
-func (ban *TBan) ApplyMove(usi_move string) {
+func (ban *TBan) ApplyMove(usi_move string, need_kiki bool, need_sente_move bool, need_gote_move bool) {
 	// usi_moveをこちらのmoveに変換する
 	var from_str string
 	var to_str string
@@ -689,13 +782,15 @@ func (ban *TBan) ApplyMove(usi_move string) {
 
 	// 最後の手を保存しておく
 	ban.LastMoveTo = &to
-	// 前に生成した、打つ手を全部リセットする。
-	ban.ResetDropMoves()
-	// 持ち駒がないなら、これを省略する。
-	// 駒を打つ手を生成するために、空いているマスや二歩のチェックをする
-	ban.CheckEmptyMasu()
-	// 打つ手を生成する
-	ban.CreateAllMochigomaMoves()
+	if need_sente_move || need_gote_move {
+		// 前に生成した、打つ手を全部リセットする。
+		ban.ResetDropMoves()
+		// 持ち駒がないなら、これを省略する。
+		// 駒を打つ手を生成するために、空いているマスや二歩のチェックをする
+		ban.CheckEmptyMasu()
+		// 打つ手を生成する
+		ban.CreateAllMochigomaMoves()
+	}
 	// 指し手の反映が終わり、相手の手番に
 	*(ban.Teban) = !*(ban.Teban)
 }
@@ -916,11 +1011,16 @@ func str2KindAndTeban(str string) (TKind, TTeban) {
 	return kind, teban
 }
 
+const pos2str string = "0abcdefghi"
+
 func position2str(pos TPosition) string {
 	int_x := int(real(pos))
 	int_y := int(imag(pos))
-	str := "0abcdefghi"
-	return s(int_x) + str[int_y:int_y+1]
+	// str := "0abcdefghi"
+	if (int_y < 0) || (int_y > 9) {
+		return ""
+	}
+	return s(int_x) + pos2str[int_y:int_y+1]
 }
 
 func (ban TBan) DoMove(from TPosition, to TPosition, promote bool) {

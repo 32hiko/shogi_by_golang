@@ -2,10 +2,8 @@ package shogi
 
 import (
 	. "logger"
-	"math/rand"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type IPlayer interface {
@@ -13,120 +11,7 @@ type IPlayer interface {
 }
 
 func NewPlayer(name string) IPlayer {
-	switch name {
-	case "Slide":
-		return NewSlidePlayer()
-	case "Random":
-		return NewRandomPlayer()
-	case "Kiki":
-		return NewKikiPlayer()
-	case "Main":
-		return NewMainPlayer()
-	default:
-		return nil
-	}
-}
-
-/*
- * ただ飛車を左右に動かすだけ。しかも後手専用
- */
-type TSlidePlayer struct {
-	i *int
-}
-
-func NewSlidePlayer() *TSlidePlayer {
-	var count int = 0
-	player := TSlidePlayer{}
-	player.i = &count
-	return &player
-}
-
-func (player TSlidePlayer) Search(ban *TBan, ms int) (string, int) {
-	var te string
-	if *(player.i)%2 == 0 {
-		te = "8b7b"
-	} else {
-		te = "7b8b"
-	}
-	*(player.i)++
-	return te, 0
-}
-
-/*
- * ランダム指し
- */
-type TRandomPlayer struct {
-}
-
-func NewRandomPlayer() *TRandomPlayer {
-	player := TRandomPlayer{}
-	return &player
-}
-
-func (player TRandomPlayer) Search(ban *TBan, ms int) (string, int) {
-	logger := GetLogger()
-	teban := *(ban.Teban)
-	logger.Trace("[RandomPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
-
-	all_moves := MakeAllMoves(ban)
-
-	moves_count := len(all_moves)
-	logger.Trace("[RandomPlayer] moves: " + s(moves_count))
-	if moves_count == 0 {
-		return "resign", 0
-	}
-	rand.Seed(time.Now().UnixNano())
-	random_index := rand.Intn(len(all_moves))
-	random_move := all_moves[random_index]
-	return random_move.GetUSIMoveString(), 0
-}
-
-/*
- * 利きが通っているマスの数だけで評価してみる。
- * →相手の大駒の近くに駒を寄せるだけだった。
- */
-type TKikiPlayer struct {
-}
-
-func NewKikiPlayer() *TKikiPlayer {
-	player := TKikiPlayer{}
-	return &player
-}
-
-func (player TKikiPlayer) Search(ban *TBan, ms int) (string, int) {
-	logger := GetLogger()
-	teban := *(ban.Teban)
-	logger.Trace("[KikiPlayer] ban.Tesuu: " + s(*(ban.Tesuu)) + ", teban: " + s(teban))
-
-	all_moves := MakeAllMoves(ban)
-
-	moves_count := len(all_moves)
-	logger.Trace("[KikiPlayer] moves: " + s(moves_count))
-	if moves_count == 0 {
-		return "resign", 0
-	}
-
-	move := GetMaxKikiMove(ban, &all_moves)
-	return move.GetUSIMoveString(), 0
-}
-
-func GetMaxKikiMove(ban *TBan, all_moves *map[int]*TMove) *TMove {
-	logger := GetLogger()
-	current_sfen := ban.ToSFEN(false)
-	current_max := -99999
-	current_move_key := 0
-	for key, move := range *all_moves {
-		new_ban := FromSFEN(current_sfen)
-		new_ban.ApplyMove(move.GetUSIMoveString())
-		count := new_ban.CountKikiMasu(*(ban.Teban))
-		count -= new_ban.CountKikiMasu(!*(ban.Teban))
-		if current_max < count {
-			logger.Trace("[KikiPlayer] count: " + s(count))
-			current_max = count
-			current_move_key = key
-		}
-	}
-	return (*all_moves)[current_move_key]
+	return NewMainPlayer()
 }
 
 type TMainPlayer struct {
@@ -175,8 +60,7 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 		depth = 0
 	}
 
-	// move, score := player.GetMainBestMove4(ban, &all_moves, (ms < 180000))
-	move, score := player.GetMainBestMove3(ban, &all_moves, width, depth, true)
+	move, score := player.GetMainBestMove(ban, &all_moves, width, depth, true)
 
 	return move.GetUSIMoveString(), score
 }
@@ -229,13 +113,15 @@ func (player TMainPlayer) scoreRoutine(sfen string, teban TTeban, key int, move 
 	new_ban := FromSFEN(sfen)
 	move_string := move.GetUSIMoveString()
 	// 実際に動かしてみる
-	new_ban.ApplyMove(move_string)
+	new_ban.ApplyMove(move_string, true, true, true)
+	// ここのApplyMove後では、利きは必要だが手は不要。
 
 	resp_string := ""
 	new_sfen := new_ban.ToSFEN(false)
 	cached_score, ok := player.Cache[new_sfen]
+	// ok := false
 	if ok {
-		resp_string = s(key) + ":" + s(cached_score)
+		resp_string = s(key) + ":" + s(cached_score) + ":" + new_sfen
 	} else {
 		result_sente, result_gote := new_ban.Analyze()
 		score := Evaluate(result_sente, result_gote, teban)
@@ -247,8 +133,8 @@ func (player TMainPlayer) scoreRoutine(sfen string, teban TTeban, key int, move 
 		if is_disp {
 			Resp("info time 0 depth 1 nodes 1 score cp "+ToDisplayScore(score, teban)+" pv "+move_string, logger)
 		}
-		player.Cache[new_sfen] = score
-		resp_string = s(key) + ":" + s(score)
+		// player.Cache[new_sfen] = score
+		resp_string = s(key) + ":" + s(score) + ":" + new_sfen
 		if IsOute(new_ban, !teban) {
 			resp_string += ":Oute"
 		}
@@ -274,7 +160,7 @@ func NewNodeScore(key int, moves string, score int, resp_score int) *TNodeScore 
 	return &node_score
 }
 
-func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove, width int, depth int, is_disp bool) (*TMove, int) {
+func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove, width int, depth int, is_disp bool) (*TMove, int) {
 	logger := GetLogger()
 	teban := *(ban.Teban)
 	current_sfen := ban.ToSFEN(false)
@@ -303,7 +189,9 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 		result_arr := strings.Split(result, ":")
 		key, _ := strconv.Atoi(result_arr[0])
 		score, _ := strconv.Atoi(result_arr[1])
-		if len(result_arr) == 3 {
+		sfen := result_arr[2]
+		player.Cache[sfen] = score
+		if len(result_arr) == 4 {
 			// 王手フラグあり。候補手とする
 			oute_map[key] = score
 		} else {
@@ -331,8 +219,16 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 			new_ban := FromSFEN(current_sfen)
 			move := (*all_moves)[key]
 			move_string := move.GetUSIMoveString()
-			new_ban.ApplyMove(move_string)
-			// logger.Trace("before GetMainBestMove3 " + move_string)
+			need_sente_move := true
+			need_gote_move := true
+			if teban {
+				// need_gote_move = true
+			} else {
+				// need_sente_move = false
+			}
+			new_ban.ApplyMove(move_string, true, need_sente_move, need_gote_move)
+			// ここのApplyMove後では、相手側の手だけあれば。
+			// 王手なら、利きも必要になる。ただ、現在王手かどうかの判定に利きを使っているので、現状は利きと相手側の手だけで。
 			next_moves := MakeAllMoves(new_ban)
 			if len(next_moves) == 0 {
 				// 手がないので詰み。下のは読んだ先で詰みがある場合？
@@ -341,7 +237,7 @@ func (player TMainPlayer) GetMainBestMove3(ban *TBan, all_moves *map[int]*TMove,
 				logger.Trace("[BestMove3] tsumi: " + move_string)
 				break
 			}
-			next_best_move, count := player.GetMainBestMove3(new_ban, &next_moves, next_width, next_depth, false)
+			next_best_move, count := player.GetMainBestMove(new_ban, &next_moves, next_width, next_depth, false)
 			if next_best_move == nil {
 				// 手がないのはつまり詰み。
 				current_move_key = key
