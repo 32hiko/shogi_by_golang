@@ -48,7 +48,7 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 
 	// magic number
 	width := 999
-	depth := 3
+	depth := 5
 	if ms < 300000 {
 		depth = 2
 	}
@@ -113,7 +113,7 @@ func (player TMainPlayer) scoreRoutine(sfen string, teban TTeban, key int, move 
 	new_ban := FromSFEN(sfen)
 	move_string := move.GetUSIMoveString()
 	// 実際に動かしてみる
-	new_ban.ApplyMove(move_string, true, true, true)
+	new_ban.ApplyMove(move_string, true, false, false)
 	// ここのApplyMove後では、利きは必要だが手は不要。
 
 	resp_string := ""
@@ -205,7 +205,12 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove, 
 		better_moves_map[k] = s
 	}
 
+	// /2にして幅を広くしても、時間を浪費して自滅する。
 	next_width := width / 4
+	// 最低幅を4にすると、重すぎ。2でどうか？2でも重い。
+	if next_width < 1 {
+		next_width = 1
+	}
 	next_depth := depth - 1
 
 	current_move_key := 0
