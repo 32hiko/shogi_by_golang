@@ -48,12 +48,12 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 
 	// magic number
 	width := 999
-	depth := 5
+	depth := 4
 	if ms < 300000 {
-		depth = 2
+		depth = 3
 	}
 	if ms < 120000 {
-		depth = 1
+		depth = 2
 	}
 	if ms < 60000 {
 		// magic number
@@ -180,6 +180,9 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove, 
 	if width > 32 {
 		width = 32
 	}
+	if width == 0 {
+		width = 1
+	}
 
 	// logger.Trace("------start------")
 	// ゴルーチンの結果待ち
@@ -286,7 +289,7 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove, 
 
 func PutToMap(m *map[int]int, k int, s int, w int) {
 	// 項目が上限に達している
-	if len(*m) == w {
+	if len(*m) >= w {
 		min_k := 0
 		min_s := 99999
 		// 現在の最小の項目を取得する
