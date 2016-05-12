@@ -7,6 +7,7 @@ import (
 	. "shogi"
 	"strconv"
 	s "strings"
+	"time"
 )
 
 // const
@@ -21,6 +22,80 @@ func respUSI(logger *Logger) {
 }
 
 func main() {
+	InitLogger()
+	logger := GetLogger()
+	defer logger.Close()
+
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		text := scanner.Text()
+		logger.Req(text)
+
+		switch text {
+		case "usi":
+			respUSI(logger)
+		case "quit":
+			// TODO 終了前処理
+			os.Exit(0)
+		case "setoption name USI_Ponder value true":
+			// TODO 設定を保存する
+		case "setoption name USI_Hash value 256":
+			// TODO 設定を保存する
+		case "isready":
+			// TODO ここも要見直し
+			Resp("readyok", logger)
+		case "usinewgame":
+			// TODO: モードを切り替えるべきか。
+		case "gameover":
+			// TODO: 対局待ち状態に戻る。
+		default:
+			bestmove_str := handle_text(text)
+			Resp(bestmove_str, logger)
+		}
+	}
+}
+
+// タイマーの部分だけサンプル的に作ってみた。当然、positionの方とかが未。
+func handle_text(text string) string {
+	response := ""
+	if s.HasPrefix(text, "position") {
+	} else if s.HasPrefix(text, "go") {
+		// go btime 600000 wtime 600000 binc 10000 winc 10000
+		split_text := s.Split(text, " ")
+		btime := split_text[2]
+		wtime := split_text[4]
+
+		// temp logic
+		limit_ms, _ := strconv.Atoi(btime)
+		think_ms, _ := strconv.Atoi(wtime)
+		timer1 := time.NewTimer(time.Millisecond * time.Duration(limit_ms))
+		timer2 := time.NewTimer(time.Millisecond * time.Duration(think_ms))
+		ch := make(chan string)
+
+		// time manager
+		go func() {
+			<-timer1.C
+			// TODO select better move before time up
+			stop2 := timer2.Stop()
+			if stop2 {
+				ch <- "time up"
+			}
+		}()
+		// search thread
+		go func() {
+			<-timer2.C
+			stop1 := timer1.Stop()
+			if stop1 {
+				ch <- "7c7d"
+			}
+		}()
+		res := <-ch
+		response = "bestmove " + res
+	}
+	return response
+}
+
+func old_main() {
 	// 独自のLoggerを使用
 	InitLogger()
 	logger := GetLogger()
