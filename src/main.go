@@ -145,10 +145,9 @@ func handle_go_text(text string) string {
 	go func() {
 		<-time_manager.C
 		// TODO select better move before time up
-		stop := player_timer.Stop()
-		if stop {
-			ch <- "resign"
-		}
+		logger.Trace("!!!time up!!!")
+		player_timer.Stop()
+		ch <- "resign"
 	}()
 	go func() {
 		bestmove, _ := player.Search(master, ms)
