@@ -9,7 +9,11 @@ func TestFixOpening(t *testing.T) {
 	m1 := joseki.FixOpening[1]
 	m2 := joseki.FixOpening[2]
 
-	p("1: " + m1.GetUSIMoveString())
-	p("2: " + m2.GetUSIMoveString())
+	if m1 != nil {
+		p("1: " + m1.GetUSIMoveString())
+	}
+	if m2 != nil {
+		p("2: " + m2.GetUSIMoveString())
+	}
 	p("TestFixOpening")
 }

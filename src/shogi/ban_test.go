@@ -35,5 +35,42 @@ func TestAnalyze(t *testing.T) {
 	for k, v := range result_sente {
 		p(k + ": " + s(v))
 	}
+	for k, v := range result_gote {
+		p(k + ": " + s(v))
+	}
 	p("TestAnalyze")
+}
+
+func TestPlaceKoma(t *testing.T) {
+	ban1 := NewBan()
+
+	koma1 := NewKoma(1, Fu, 2, 7, Sente)
+	ban1.PlaceKoma(koma1)
+
+	koma2 := NewKoma(2, Kyo, 1, 1, Gote)
+	ban1.PlaceKoma(koma2)
+
+	koma3 := NewKoma(3, Kei, 2, 9, Sente)
+	koma3.Promoted = true
+	ban1.PlaceKoma(koma3)
+
+	for a := 0; a < 2; a++ {
+		for b := 0; b < 14; b++ {
+			for c := 0; c < 18; c++ {
+				if ban1.Koma[a][b][c] != 0 {
+					p("ban1.Koma[" + s(a) + "][" + s(b) + "][" + s(c) + "]=[" + s(ban1.Koma[a][b][c]) + "]")
+				}
+			}
+		}
+	}
+	if ban1.Koma[0][0][0] != 27 {
+		t.Errorf("actual:[%v] expected:[%v]", ban1.Koma[0][0][0], 27)
+	}
+	if ban1.Koma[1][1][0] != 11 {
+		t.Errorf("actual:[%v] expected:[%v]", ban1.Koma[1][1][0], 11)
+	}
+	if ban1.Koma[0][10][0] != 29 {
+		t.Errorf("actual:[%v] expected:[%v]", ban1.Koma[0][10][0], 29)
+	}
+	p("TestPlaceKoma")
 }

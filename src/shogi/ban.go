@@ -25,6 +25,7 @@ type TBan struct {
 	FuDropSente    []byte
 	FuDropGote     []byte
 	LastMoveTo     *TPosition
+	Koma           [2][14][18]TPos
 }
 
 func NewBan() *TBan {
@@ -59,6 +60,8 @@ func NewBan() *TBan {
 	}
 	return &ban
 }
+
+type TPos byte
 
 func FromSFEN(sfen string) *TBan {
 	// 例：lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1
@@ -112,8 +115,6 @@ func NewBanFromSFEN(sfen string) *TBan {
 	}
 	*(ban.Tesuu) = tesuu
 
-	p("teban: " + s(teban))
-	p("tesuu: " + s(tesuu))
 	return ban
 }
 
@@ -156,28 +157,21 @@ func (ban TBan) PlaceSFENKoma(sfen string) {
 	}
 }
 
-func (ban TBan) PlaceKoma(koma *TKoma) {
-	//logger := GetLogger()
-	//logger.Trace("PutKoma id: " + s(koma.Id))
-	// 駒が持っている位置を更新
-	ban.AllKoma[koma.Id] = koma
-
-	// ここは本来、駒の所有権が決まった時点でやる処理。初期化も、まず全部持ち駒にしてそれを打っていくのが正しい。
-	if koma.IsSente {
-		ban.SenteKoma[koma.Id] = koma
-	} else {
-		ban.GoteKoma[koma.Id] = koma
+func (ban *TBan) PlaceKoma(koma *TKoma) {
+	// ban.Komaにkomaを登録する
+	// NewKoma(koma_id, kind, x, y, teban)
+	teban := koma.IsSente.toTIntTeban()
+	pos := koma.Position.toTPos()
+	kind := koma.Kind.toTIntKoma()
+	if koma.Promoted {
+		kind += 8
 	}
-
-	ban.AllMasu[koma.Position].KomaId = koma.Id
-
-	// 配置した駒の合法手、利きを作成
-	// ban.AllMoves[koma.Id] = ban.CreateFarMovesAndKiki(koma)
-
-	// 自マスに、他の駒からの利きとしてIdが入っている場合で、香、角、飛の場合は先の利きを止める
-	// こちらも、龍や馬の周囲に駒を打った場合、的外れな方向の手や利きを消そうとしてしまうので、作り直しとする
-	// ban.DeleteCloseMovesAndKiki(koma, Sente)
-	// ban.DeleteCloseMovesAndKiki(koma, Gote)
+	for i := 0; i < 18; i++ {
+		if ban.Koma[teban][kind][i] == 0 {
+			ban.Koma[teban][kind][i] = pos
+			break
+		}
+	}
 }
 
 func (ban TBan) ToSFEN(need_tesuu bool) string {

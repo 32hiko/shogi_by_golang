@@ -18,6 +18,67 @@ const (
 	Gyoku
 )
 
+type TIntKoma int
+const (
+	Fu_i TIntKoma = iota // 0
+	Kyo_i
+	Kei_i
+	Gin_i
+	Kaku_i
+	Hi_i
+	Gyoku_i
+	Kin_i
+	ToKin_i
+	NariKyo_i
+	NariKei_i
+	NariGin_i
+	Uma_i
+	Ryu_i
+)
+
+type TIntTeban int
+const (
+	Sente_i TIntTeban = 0
+	Gote_i TIntTeban = 1
+)
+
+func (teban TTeban) toTIntTeban() TIntTeban {
+	if teban {
+		return Sente_i
+	} else {
+		return Gote_i
+	}
+}
+
+func (position TPosition) toTPos() TPos {
+	x := int(real(position))
+	y := int(imag(position))
+	// TPosは、とりあえず1九 = 19な感じで。
+	return TPos(10 * x + y)
+}
+
+func (kind TKind) toTIntKoma() TIntKoma {
+	switch kind {
+	case Fu:
+		return Fu_i
+	case Kyo:
+		return Kyo_i
+	case Kei:
+		return Kei_i
+	case Gin:
+		return Gin_i
+	case Kin:
+		return Kin_i
+	case Kaku:
+		return Kaku_i
+	case Hi:
+		return Hi_i
+	case Gyoku:
+		return Gyoku_i
+	}
+	return 0
+}
+
 const (
 	Sente TTeban = true
 	Gote  TTeban = false
