@@ -54,11 +54,14 @@ func TestPlaceKoma(t *testing.T) {
 	koma3.Promoted = true
 	ban1.PlaceKoma(koma3)
 
+	koma4 := NewKoma(4, Gin, 0, 0, Gote)
+	ban1.PlaceKoma(koma4)
+
 	for a := 0; a < 2; a++ {
 		for b := 0; b < 14; b++ {
 			for c := 0; c < 18; c++ {
 				if ban1.Koma[a][b][c] != 0 {
-					p("ban1.Koma[" + s(a) + "][" + s(b) + "][" + s(c) + "]=[" + s(ban1.Koma[a][b][c]) + "]")
+					p("ban1.Koma[" + s(a) + "][" + s(b) + "][" + s(c) + "]=" + s(ban1.Koma[a][b][c]))
 				}
 			}
 		}
@@ -71,6 +74,9 @@ func TestPlaceKoma(t *testing.T) {
 	}
 	if ban1.Koma[0][10][0] != 29 {
 		t.Errorf("actual:[%v] expected:[%v]", ban1.Koma[0][10][0], 29)
+	}
+	if ban1.Koma[1][3][0] != 100 {
+		t.Errorf("actual:[%v] expected:[%v]", ban1.Koma[1][3][0], 100)
 	}
 	p("TestPlaceKoma")
 }

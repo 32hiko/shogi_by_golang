@@ -19,6 +19,7 @@ const (
 )
 
 type TIntKoma int
+
 const (
 	Fu_i TIntKoma = iota // 0
 	Kyo_i
@@ -37,9 +38,10 @@ const (
 )
 
 type TIntTeban int
+
 const (
 	Sente_i TIntTeban = 0
-	Gote_i TIntTeban = 1
+	Gote_i  TIntTeban = 1
 )
 
 func (teban TTeban) toTIntTeban() TIntTeban {
@@ -54,7 +56,10 @@ func (position TPosition) toTPos() TPos {
 	x := int(real(position))
 	y := int(imag(position))
 	// TPosは、とりあえず1九 = 19な感じで。
-	return TPos(10 * x + y)
+	if x == 0 && y == 0 {
+		return TPos(100)
+	}
+	return TPos(10*x + y)
 }
 
 func (kind TKind) toTIntKoma() TIntKoma {

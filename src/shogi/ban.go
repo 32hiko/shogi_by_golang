@@ -359,6 +359,7 @@ func (ban TBan) SetSFENMochigoma(sfen_mochigoma string) {
 				ban.AllKoma[koma_id] = new_mochigoma
 				taban_koma := *(ban.GetTebanKoma(teban))
 				taban_koma[koma_id] = new_mochigoma
+				ban.PlaceKoma(new_mochigoma)
 			}
 			count = 0
 		} else {
