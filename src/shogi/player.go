@@ -177,8 +177,8 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove, 
 	if width == 999 {
 		width = len(*all_moves) / 2
 	}
-	if width > 32 {
-		width = 32
+	if width > 16 {
+		width = 16
 	}
 	if width == 0 {
 		width = 1
@@ -378,6 +378,25 @@ func MakeAllMoves(ban *TBan) map[int]*TMove {
 	}
 	return all_moves
 }
+
+type TMove2 TMove
+
+func MakeAllMoves2(ban *TBan) map[int]*TMove2 {
+	all_moves := make(map[int]*TMove2)
+	return all_moves
+}
+
+func IsOute2(ban *TBan) bool {
+	// 玉を取得
+	//teban_i := *(ban.Teban).toTIntTeban()
+	//my_gyoku_pos := ban.Koma[teban_i][Gyoku_i][0]
+
+	// 玉の位置の相手の利きがあれば王手、なければ王手じゃあない
+	// 全部の駒の利きのBitBoardを重ねて判定する？近くの駒だけ探す？
+	// 近利き、遠利き
+	return false
+}
+
 
 func FindGyoku(ban *TBan, teban TTeban) *TKoma {
 	var gyoku *TKoma
