@@ -48,7 +48,7 @@ func (player TMainPlayer) Search(ban *TBan, ms int) (string, int) {
 
 	// magic number
 	width := 999
-	depth := 4
+	depth := 5
 	if ms < 300000 {
 		depth = 3
 	}
@@ -177,8 +177,8 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove, 
 	if width == 999 {
 		width = len(*all_moves) / 2
 	}
-	if width > 16 {
-		width = 16
+	if width > 2 {
+		width = 2
 	}
 	if width == 0 {
 		width = 1
@@ -209,10 +209,10 @@ func (player TMainPlayer) GetMainBestMove(ban *TBan, all_moves *map[int]*TMove, 
 	}
 
 	// /2にして幅を広くしても、時間を浪費して自滅する。
-	next_width := width / 4
+	next_width := width // 4
 	// 最低幅を4にすると、重すぎ。2でどうか？2でも重い。
 	if next_width < 1 {
-		next_width = 1
+		next_width = 2
 	}
 	next_depth := depth - 1
 
@@ -394,6 +394,8 @@ func IsOute2(ban *TBan) bool {
 	// 玉の位置の相手の利きがあれば王手、なければ王手じゃあない
 	// 全部の駒の利きのBitBoardを重ねて判定する？近くの駒だけ探す？
 	// 近利き、遠利き
+	// 今までのデータ構造に近い形でもいいので、とりあえず相手の利きのマップだけ取れるようにする。
+	// aite_kiki_map := ban.getKikiMap[teban_i.getAiteBan()]
 	return false
 }
 

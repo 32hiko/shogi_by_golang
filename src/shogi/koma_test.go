@@ -138,3 +138,17 @@ func TestCanFarMove(t *testing.T) {
 	}
 	p("TestCanFarMove")
 }
+
+func Test_getAiteBan(t *testing.T) {
+	sente := Sente_i
+	gote := Gote_i
+	sente_no_aite_ban := sente.getAiteBan()
+	if sente_no_aite_ban != Gote_i {
+		t.Errorf("actual:[%v] expected:[%v]", sente_no_aite_ban, Gote_i)
+	}
+	gote_no_aite_ban := gote.getAiteBan()
+	if gote_no_aite_ban != Sente_i {
+		t.Errorf("actual:[%v] expected:[%v]", gote_no_aite_ban, Sente_i)
+	}
+	p("Test_getAiteBan")
+}

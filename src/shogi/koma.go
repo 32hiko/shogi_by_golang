@@ -52,6 +52,14 @@ func (teban TTeban) toTIntTeban() TIntTeban {
 	}
 }
 
+func (teban TIntTeban) getAiteBan() TIntTeban {
+	if teban == Sente_i {
+		return Gote_i
+	} else {
+		return Sente_i
+	}
+}
+
 func (position TPosition) toTPos() TPos {
 	x := int(real(position))
 	y := int(imag(position))
